@@ -1,4 +1,4 @@
-# Embera 角色 AI 生成 Prompt
+# Linger 角色 AI 生成 Prompt
 
 统一风格关键词（每个 prompt 都加在末尾）：
 ```

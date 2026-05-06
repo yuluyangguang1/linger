@@ -39,6 +39,6 @@
   </g>
 
   <!-- Text -->
-  <text x="42" y="25" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="18" font-weight="700" fill="url(#textGrad)" letter-spacing="0.5">Embera</text>
+  <text x="42" y="25" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="18" font-weight="700" fill="url(#textGrad)" letter-spacing="0.5">Linger</text>
   <text x="42" y="37" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10" font-weight="400" fill="#FF7A3D" opacity="0.7" letter-spacing="2">余温</text>
 </svg>

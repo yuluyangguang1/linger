@@ -56,7 +56,7 @@ Apple 的 Liquid Glass（液态玻璃）是 iOS、macOS 等系统中的设计语
 
 ---
 
-## 🔧 在 Embera 中的应用
+## 🔧 在 Linger 中的应用
 
 ### 已更新的组件：
 

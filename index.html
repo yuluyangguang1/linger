@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Embera · 余温</title>
+  <title>Linger · 余温</title>
   <link rel="icon" href="src/assets/logo-icon-128.png">
   <link rel="stylesheet" href="src/style.css?v=13">
 </head>
@@ -42,11 +42,11 @@
       <div class="gender-logo">
         <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><path d="M16 28C22.6274 28 28 22.6274 28 16C28 9.37258 22.6274 4 16 4C9.37258 4 4 9.37258 4 16C4 22.6274 9.37258 28 16 28Z" fill="#FF9E5E"/><path d="M16 24C20.4183 24 24 20.4183 24 16C24 11.5817 20.4183 8 16 8C11.5817 8 8 11.5817 8 16C8 20.4183 11.5817 24 16 24Z" fill="#FF5E78"/></svg>
       </div>
-      <div class="gender-brand-title">Embera · 余温</div>
+      <div class="gender-brand-title">Linger · 余温</div>
       <div class="gender-brand-sub">AI 情感陪伴应用 · 让你感觉不是一个人</div>
     </div>
 
-    <div class="gender-welcome">欢迎来到 Embera</div>
+    <div class="gender-welcome">欢迎来到 Linger</div>
     <div class="gender-hint">选择一个身份开始</div>
 
     <div class="gender-options">
@@ -464,9 +464,11 @@
   <div class="chat-footer memorial-footer">
     <button class="chat-footer-voice">🎙️</button>
     <div class="chat-input-box">
-      <textarea id="memorial-chat-input" rows="1" placeholder="说点什么..."></textarea>
+      <textarea id="memorial-chat-input" rows="1" placeholder="说点什么..."
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMemorialChat()}"
+        oninput="autoResize(this)"></textarea>
     </div>
-    <button class="chat-footer-send memorial-send">➤</button>
+    <button class="chat-footer-send memorial-send" onclick="sendMemorialChat()">➤</button>
   </div>
 </div>
 
@@ -474,7 +476,6 @@
 
 <script src="src/onboarding.js"></script>
 <script src="src/app.js"></script>
-<script src="src/pages.js"></script>
 <script>
   document.addEventListener('DOMContentLoaded', initApp);
 </script>

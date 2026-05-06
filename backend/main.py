@@ -1,19 +1,24 @@
 """
-Embera · 余温 — FastAPI 后端服务
+Linger · 余温 — FastAPI 后端服务
 提供角色管理、对话、记忆、会员等 API
 """
 
 import os
+import uuid
 import time
 import json
 import asyncio
 from typing import List, Optional, AsyncGenerator
 from datetime import datetime, date
 
+from dotenv import load_dotenv
+load_dotenv()
+
 import httpx
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from fastapi import UploadFile, File, Form
 from pydantic import BaseModel
 from sqlalchemy import select, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,8 +28,10 @@ from database.engine import get_db, init_db, engine, Base
 from models.user import User
 from models.conversation import Conversation
 from models.memory import Memory
+from models.pet import Pet
+from models.memorial import MemorialCharacter
 
-app = FastAPI(title="Embera API", version="0.3.0")
+app = FastAPI(title="Linger API", version="0.3.0")
 
 # ═══════════════════════════════════════════
 # CORS — 允许前端调用
@@ -230,14 +237,14 @@ async def call_llm(messages: List[dict], model: str = None) -> str:
         "Content-Type": "application/json",
     }
     if "openrouter" in LLM_API_BASE:
-        headers["HTTP-Referer"] = "https://embera.app"
-        headers["X-Title"] = "Embera"
+        headers["HTTP-Referer"] = "https://linger.app"
+        headers["X-Title"] = "Linger"
 
     payload = {
         "model": model,
         "messages": messages,
         "temperature": 0.8,
-        "max_tokens": 200,
+        "max_tokens": 512,
     }
 
     async with httpx.AsyncClient(timeout=60) as client:
@@ -269,14 +276,14 @@ async def call_llm_stream(messages: List[dict], model: str = None) -> AsyncGener
         "Content-Type": "application/json",
     }
     if "openrouter" in LLM_API_BASE:
-        headers["HTTP-Referer"] = "https://embera.app"
-        headers["X-Title"] = "Embera"
+        headers["HTTP-Referer"] = "https://linger.app"
+        headers["X-Title"] = "Linger"
 
     payload = {
         "model": model,
         "messages": messages,
         "temperature": 0.8,
-        "max_tokens": 200,
+        "max_tokens": 512,
         "stream": True,
     }
 
@@ -374,11 +381,8 @@ async def chat_send(req: ChatRequest, session: AsyncSession = Depends(get_db)):
     model = TIER_MODELS.get(user.subscription_tier or "free", TIER_MODELS["free"])
 
     reply = await call_llm(messages, model=model)
-    print(f"[DEBUG] chat_send after LLM, user={req.user_id}")
-
     await add_history_db(session, req.user_id, req.char_id, "user", req.message, model)
     await add_history_db(session, req.user_id, req.char_id, "assistant", reply, model)
-    print(f"[DEBUG] chat_send after history, user={req.user_id}")
 
     memory_captured = extract_memory(req.message)
     if memory_captured:
@@ -389,7 +393,6 @@ async def chat_send(req: ChatRequest, session: AsyncSession = Depends(get_db)):
     delay_ms = max(base_delay, elapsed)
 
     tier_info = await check_tier_db(session, req.user_id)
-    print(f"[DEBUG] chat_send final tier_info: {tier_info}")
 
     return ChatResponse(
         reply=reply,
@@ -441,7 +444,7 @@ async def chat_stream(req: ChatRequest, session: AsyncSession = Depends(get_db))
                 data = json.loads(event.replace("data: ", "").strip())
                 if data.get("type") == "chunk":
                     full_reply += data["content"]
-            except:
+            except Exception:
                 pass
 
         await add_history_db(session, req.user_id, req.char_id, "user", req.message, model)
@@ -464,6 +467,18 @@ async def chat_stream(req: ChatRequest, session: AsyncSession = Depends(get_db))
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@app.get("/api/chat/history/{char_id}")
+async def chat_history(
+    char_id: str,
+    user_id: str = "default",
+    limit: int = 50,
+    session: AsyncSession = Depends(get_db),
+):
+    """查询聊天历史"""
+    messages = await get_history_db(session, user_id, char_id, limit=limit)
+    return {"messages": messages}
 
 
 # ═══════════════════════════════════════════
@@ -529,26 +544,262 @@ async def char_create(req: dict):
 
 
 # ═══════════════════════════════════════════
-# 路由 — 宠物（占位）
+# 路由 — 宠物
 # ═══════════════════════════════════════════
 
+SPECIES_CONFIG = {
+    "cat": {"name": "猫咪", "emoji": "🐱", "base_personality": ["高冷", "偶尔黏人", "傲娇"]},
+    "dog": {"name": "狗狗", "emoji": "🐶", "base_personality": ["热情", "忠诚", "粘人"]},
+    "rabbit": {"name": "兔子", "emoji": "🐰", "base_personality": ["温顺", "胆小", "呆萌"]},
+    "panda": {"name": "熊猫", "emoji": "🐼", "base_personality": ["懒", "吃货", "反差萌"]},
+    "fox": {"name": "狐狸", "emoji": "🦊", "base_personality": ["聪明", "狡黠", "神秘"]},
+    "dragon": {"name": "小龙", "emoji": "🐉", "base_personality": ["傲娇", "守护", "强大"]},
+    "robot": {"name": "机器宠", "emoji": "🤖", "base_personality": ["理性", "学习型", "进化"]},
+}
+
+
+class CreatePetRequest(BaseModel):
+    name: str
+    species: str
+    user_id: str = "default"
+
+
+class PetActionRequest(BaseModel):
+    action: str  # feed/play/clean/talk
+
+
 @app.get("/api/pets/list")
-async def pets_list():
-    return {"pets": []}
+async def pets_list(user_id: str = "default", session: AsyncSession = Depends(get_db)):
+    """获取用户的所有宠物"""
+    result = await session.execute(select(Pet).where(Pet.owner_id == user_id))
+    pets = result.scalars().all()
+    return {
+        "pets": [
+            {
+                "id": str(p.id),
+                "name": p.name,
+                "species": p.species,
+                "emoji": SPECIES_CONFIG.get(p.species, {}).get("emoji", "🐾"),
+                "hunger": round(p.hunger, 1),
+                "cleanliness": round(p.cleanliness, 1),
+                "mood": round(p.mood, 1),
+                "energy": round(p.energy, 1),
+                "intimacy": round(p.intimacy, 1),
+                "speak_level": round(p.speak_level, 1),
+                "level": p.level,
+            }
+            for p in pets
+        ]
+    }
 
 
 @app.get("/api/pets/species")
 async def pets_species():
-    return {"species": ["cat", "dog", "rabbit", "panda", "fox", "dragon", "robot"]}
+    """获取所有可选宠物物种"""
+    species = []
+    for sid, cfg in SPECIES_CONFIG.items():
+        species.append({
+            "id": sid,
+            "name": cfg["name"],
+            "emoji": cfg["emoji"],
+            "personality": cfg["base_personality"],
+        })
+    return {"species": species}
+
+
+@app.post("/api/pets/create")
+async def pets_create(req: CreatePetRequest, session: AsyncSession = Depends(get_db)):
+    """创建新宠物"""
+    if req.species not in SPECIES_CONFIG:
+        raise HTTPException(status_code=400, detail="未知的宠物物种")
+
+    user = await get_or_create_user_db(session, req.user_id)
+    cfg = SPECIES_CONFIG[req.species]
+
+    pet = Pet(
+        owner_id=user.id,
+        name=req.name,
+        species=req.species,
+        personality_traits=cfg["base_personality"],
+    )
+    session.add(pet)
+    await session.commit()
+    await session.refresh(pet)
+
+    return {
+        "id": str(pet.id),
+        "name": pet.name,
+        "species": pet.species,
+        "emoji": cfg["emoji"],
+        "hunger": pet.hunger,
+        "mood": pet.mood,
+        "intimacy": pet.intimacy,
+        "speak_level": pet.speak_level,
+        "level": pet.level,
+    }
+
+
+@app.post("/api/pets/{pet_id}/action")
+async def pets_action(pet_id: str, req: PetActionRequest, session: AsyncSession = Depends(get_db)):
+    """与宠物互动"""
+    result = await session.execute(select(Pet).where(Pet.id == pet_id))
+    pet = result.scalar_one_or_none()
+
+    if not pet:
+        raise HTTPException(status_code=404, detail="宠物不存在")
+
+    now = datetime.utcnow()
+    response = {}
+
+    if req.action == "feed":
+        pet.hunger = min(100, pet.hunger + 30)
+        pet.intimacy = min(100, pet.intimacy + 1)
+        pet.last_fed = now
+        response = {"message": f"🍚 给 {pet.name} 喂了好吃的！", "hunger": pet.hunger}
+
+    elif req.action == "play":
+        pet.mood = min(100, pet.mood + 20)
+        pet.energy = max(0, pet.energy - 15)
+        pet.intimacy = min(100, pet.intimacy + 3)
+        pet.experience += 10
+        pet.last_played = now
+        response = {"message": f"🎾 跟 {pet.name} 玩了一会儿！", "mood": pet.mood}
+
+    elif req.action == "clean":
+        pet.cleanliness = min(100, pet.cleanliness + 40)
+        if pet.species == "cat":
+            pet.mood = max(0, pet.mood - 5)
+        pet.last_cleaned = now
+        response = {"message": f"🛁 给 {pet.name} 洗了个澡！", "cleanliness": pet.cleanliness}
+
+    elif req.action == "talk":
+        pet.speak_level = min(100, pet.speak_level + 1)
+        pet.intimacy = min(100, pet.intimacy + 2)
+        if pet.intimacy < 20:
+            reply = f"{pet.name}: 喵~" if pet.species == "cat" else f"{pet.name}: 汪！"
+        elif pet.intimacy < 50:
+            reply = f"{pet.name}: 饿饿...想玩..."
+        elif pet.intimacy < 80:
+            reply = f"{pet.name}: 今天你回来晚了呢，我等了好久。"
+        else:
+            reply = f"{pet.name}: 你最近是不是不太开心？我感觉你叹气变多了。"
+        response = {"message": reply, "speak_level": pet.speak_level}
+
+    else:
+        raise HTTPException(status_code=400, detail="未知的互动类型")
+
+    pet.last_interaction = now
+
+    if pet.experience >= pet.level * 100:
+        pet.level += 1
+        response["level_up"] = True
+        response["new_level"] = pet.level
+
+    await session.commit()
+
+    response.update({
+        "hunger": round(pet.hunger, 1),
+        "cleanliness": round(pet.cleanliness, 1),
+        "mood": round(pet.mood, 1),
+        "energy": round(pet.energy, 1),
+        "intimacy": round(pet.intimacy, 1),
+        "speak_level": round(pet.speak_level, 1),
+        "level": pet.level,
+    })
+
+    return response
 
 
 # ═══════════════════════════════════════════
-# 路由 — 纪念（占位）
+# 路由 — 纪念
 # ═══════════════════════════════════════════
+
+class CreateMemorialRequest(BaseModel):
+    name: str
+    relation_type: str  # parent/grandparent/sibling/friend/pet/other
+    user_id: str = "default"
+    personality_desc: Optional[str] = None
+    catchphrases: List[str] = []
+
 
 @app.get("/api/memorial/list")
-async def memorial_list():
-    return {"memorials": []}
+async def memorial_list(user_id: str = "default", session: AsyncSession = Depends(get_db)):
+    """获取用户的所有怀念角色"""
+    result = await session.execute(
+        select(MemorialCharacter).where(MemorialCharacter.owner_id == user_id)
+    )
+    memorials = result.scalars().all()
+    return {
+        "memorials": [
+            {
+                "id": str(m.id),
+                "name": m.name,
+                "relation_type": m.relation_type,
+                "avatar_url": m.avatar_url,
+                "photos_count": len(m.photos) if m.photos else 0,
+                "stories_count": len(m.stories) if m.stories else 0,
+                "total_conversations": m.total_conversations,
+                "created_at": m.created_at.isoformat() if m.created_at else None,
+            }
+            for m in memorials
+        ]
+    }
+
+
+@app.post("/api/memorial/create")
+async def memorial_create(req: CreateMemorialRequest, session: AsyncSession = Depends(get_db)):
+    """创建数字怀念角色"""
+    user = await get_or_create_user_db(session, req.user_id)
+
+    memorial = MemorialCharacter(
+        owner_id=user.id,
+        name=req.name,
+        relation_type=req.relation_type,
+        personality_desc=req.personality_desc,
+        catchphrases=req.catchphrases,
+    )
+    session.add(memorial)
+    await session.commit()
+    await session.refresh(memorial)
+
+    return {
+        "id": str(memorial.id),
+        "name": memorial.name,
+        "relation_type": memorial.relation_type,
+        "status": "created",
+        "message": f"🕊️ {memorial.name} 的数字纪念空间已创建。接下来你可以上传照片、语音和故事来完善 TA 的形象。",
+    }
+
+
+# ═══════════════════════════════════════════
+# 路由 — 文件上传
+# ═══════════════════════════════════════════
+
+UPLOAD_DIR = "data/uploads"
+ALLOWED_PHOTO_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+
+
+@app.post("/api/upload/photo")
+async def upload_photo(file: UploadFile = File(...)):
+    """上传照片"""
+    ext = os.path.splitext(file.filename)[1].lower() if file.filename else ""
+    if ext not in ALLOWED_PHOTO_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="不支持的图片格式")
+
+    filename = f"{uuid.uuid4()}{ext}"
+    photo_dir = os.path.join(UPLOAD_DIR, "photos")
+    os.makedirs(photo_dir, exist_ok=True)
+    path = os.path.join(photo_dir, filename)
+
+    content = await file.read()
+    with open(path, "wb") as f:
+        f.write(content)
+
+    return {
+        "url": f"/uploads/photos/{filename}",
+        "filename": filename,
+        "size": len(content),
+    }
 
 
 # ═══════════════════════════════════════════

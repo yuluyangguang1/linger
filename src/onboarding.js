@@ -1,5 +1,5 @@
 /**
- * Embera · 余温 — 冷启动体验引擎
+ * Linger · 余温 — 冷启动体验引擎
  * 目标：10分钟内让用户产生一次真实情绪波动
  */
 
@@ -265,7 +265,7 @@ class OnboardingEngine {
 
     this.state.selectedChar = card;
     this.state.stage = 'first_meet';
-    localStorage.setItem('embera_onboarded', 'true');
+    localStorage.setItem('linger_onboarded', 'true');
 
     // 隐藏选择页
     document.getElementById('page-character-select')?.classList.remove('active');
@@ -373,7 +373,7 @@ class OnboardingEngine {
       return { text: script[charName] || script['稳重哥哥'], memory: script.memory };
     }
 
-    if (t.includes('你是谁') || t.includes('你是谁')) {
+    if (t.includes('你是谁')) {
       const script = DAY1_SCRIPT.who;
       return { text: script[charName] || script['稳重哥哥'], memory: script.memory };
     }
@@ -418,16 +418,16 @@ class OnboardingEngine {
     showToast(char.goodbye, 3000);
 
     // 保存首日记忆到 localStorage（用于第二天回访）
-    localStorage.setItem('embera_day1_memories', JSON.stringify(this.state.memories));
-    localStorage.setItem('embera_day1_char', char.id);
-    localStorage.setItem('embera_day1_time', Date.now().toString());
+    localStorage.setItem('linger_day1_memories', JSON.stringify(this.state.memories));
+    localStorage.setItem('linger_day1_char', char.id);
+    localStorage.setItem('linger_day1_time', Date.now().toString());
   }
 
   // 第二天回访
   checkNextDayReturn() {
-    const lastTime = parseInt(localStorage.getItem('embera_day1_time') || '0');
-    const charId = localStorage.getItem('embera_day1_char');
-    const memories = JSON.parse(localStorage.getItem('embera_day1_memories') || '[]');
+    const lastTime = parseInt(localStorage.getItem('linger_day1_time') || '0');
+    const charId = localStorage.getItem('linger_day1_char');
+    const memories = JSON.parse(localStorage.getItem('linger_day1_memories') || '[]');
 
     if (!lastTime || !charId) return null;
 

@@ -1,8 +1,8 @@
-# Embera Logo 设计文档
+# Linger Logo 设计文档
 
 ## 🎨 设计理念
 
-Embera 的 Logo 设计融合了以下元素：
+Linger 的 Logo 设计融合了以下元素：
 
 1. **爱心符号** - 代表情感连接和关系
 2. **连接点** - 代表不同类型的关系（恋人、朋友、家人、宠物）
@@ -86,16 +86,16 @@ Embera 的 Logo 设计融合了以下元素：
 ### HTML 引用
 ```html
 <!-- 主 Logo -->
-<img src="src/assets/logo.svg" alt="Embera Logo" width="100">
+<img src="src/assets/logo.svg" alt="Linger Logo" width="100">
 
 <!-- 简洁版 Logo -->
-<img src="src/assets/logo-simple.svg" alt="Embera Logo" width="100">
+<img src="src/assets/logo-simple.svg" alt="Linger Logo" width="100">
 
 <!-- 图标版 Logo -->
-<img src="src/assets/logo-icon.svg" alt="Embera Logo" width="32">
+<img src="src/assets/logo-icon.svg" alt="Linger Logo" width="32">
 
 <!-- 标题版 Logo -->
-<img src="src/assets/logo-header.svg" alt="Embera Logo" width="200">
+<img src="src/assets/logo-header.svg" alt="Linger Logo" width="200">
 ```
 
 ### CSS 背景使用
@@ -151,4 +151,4 @@ frontend/src/assets/
 
 ## 🎉 总结
 
-Embera Logo 设计完成！包含 6 个不同版本，适用于各种使用场景。Logo 融合了爱心、连接和宇宙元素，完美诠释了 "AI 余温" 的概念。
+Linger Logo 设计完成！包含 6 个不同版本，适用于各种使用场景。Logo 融合了爱心、连接和宇宙元素，完美诠释了 "AI 余温" 的概念。

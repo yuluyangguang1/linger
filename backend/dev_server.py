@@ -1,5 +1,5 @@
 """
-Embera — 简单开发后端（无数据库）
+Linger — 简单开发后端（无数据库）
 用于前端开发和测试
 """
 
@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-app = FastAPI(title="Embera · 余温 Dev API", version="0.1.0")
+app = FastAPI(title="Linger · 余温 Dev API", version="0.1.0")
 
 # CORS 配置
 app.add_middleware(
@@ -79,7 +79,7 @@ AI_RESPONSES = [
 
 @app.get("/")
 async def root():
-    return {"name": "Embera · 余温 Dev API", "version": "0.1.0"}
+    return {"name": "Linger · 余温 Dev API", "version": "0.1.0"}
 
 
 @app.get("/health")

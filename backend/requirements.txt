@@ -1,5 +1,11 @@
 fastapi
-uvicorn
+uvicorn[standard]
 httpx
 pydantic
 python-multipart
+sqlalchemy[asyncio]
+aiosqlite
+aiofiles
+python-dotenv
+python-jose[cryptography]
+passlib[bcrypt]

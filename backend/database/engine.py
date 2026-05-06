@@ -11,7 +11,7 @@ class Base(DeclarativeBase):
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "sqlite+aiosqlite:///./embera.db",
+    "sqlite+aiosqlite:///./linger.db",
 )
 
 engine = create_async_engine(DATABASE_URL, echo=False)

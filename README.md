@@ -1,11 +1,11 @@
-# Embera — 余温
+# Linger — 余温
 
-> Embera · 余温 — AI 陪伴，永恒温暖
+> Linger · 余温 — AI 陪伴，永恒温暖
 
 ## 项目结构
 
 ```
-Embera/
+Linger/
 ├── backend/              # FastAPI 后端
 │   ├── api/              # API 路由
 │   ├── core/             # 核心配置

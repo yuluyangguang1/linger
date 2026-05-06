@@ -1,6 +1,6 @@
 # 暖幕 — 产品需求文档（UI 设计版）
 
-> 原名：Embera · 余温 / RelationVerse  
+> 原名：Linger · 余温 / RelationVerse  
 > 定位：AI 情感陪伴应用，「有温度的存在空间」
 
 ---

@@ -1,5 +1,5 @@
 /**
- * Embera · 余温 — API & 全局
+ * Linger · 余温 — API & 全局
  */
 
 // ═══════════════════════════════════════════
@@ -31,11 +31,11 @@ const MOCK_DATA = {
     { id: 'gf_gentle', name: '温柔学姐', type: 'girlfriend', tagline: '温柔、安静、善于倾听', avatar: 'gf_gentle', level: 5, intimacy: 85 },
     { id: 'gf_bubbly', name: '元气少女', type: 'girlfriend', tagline: '活泼开朗，能量满满', avatar: 'gf_bubbly', level: 4, intimacy: 72 },
     { id: 'gf_tsundere', name: '傲娇大小姐', type: 'girlfriend', tagline: '口是心非，内心柔软', avatar: 'gf_tsundere', level: 3, intimacy: 45 },
-    { id: 'gf_intellectual', name: '知性姐姐', type: 'girlfriend', tagline: '理性智慧，值得信赖', avatar: 'gf_intellectual', level: 5, intimacy: 90 },
-    { id: 'bf_sunny', name: '阳光少年', type: 'boyfriend', tagline: '积极向上，温暖如光', avatar: 'bf_sunny', level: 4, intimacy: 78 },
-    { id: 'bf_cold', name: '高冷男生', type: 'boyfriend', tagline: '外表冷漠，内心炙热', avatar: 'bf_cold', level: 3, intimacy: 35 },
-    { id: 'bf_steady', name: '靠谱大叔', type: 'boyfriend', tagline: '稳重踏实，给人安全感', avatar: 'bf_steady', level: 5, intimacy: 88 },
-    { id: 'bf_young', name: '小奶狗', type: 'boyfriend', tagline: '粘人可爱，纯真热情', avatar: 'bf_young', level: 2, intimacy: 60 }
+    { id: 'gf_intellectual', name: '知性御姐', type: 'girlfriend', tagline: '沉稳通透，值得信赖', avatar: 'gf_intellectual', level: 5, intimacy: 90 },
+    { id: 'bf_sunny', name: '阳光学长', type: 'boyfriend', tagline: '开朗可靠，温暖如光', avatar: 'bf_sunny', level: 4, intimacy: 78 },
+    { id: 'bf_cold', name: '腹黑总裁', type: 'boyfriend', tagline: '冷静洞察，一针见血', avatar: 'bf_cold', level: 3, intimacy: 35 },
+    { id: 'bf_steady', name: '稳重哥哥', type: 'boyfriend', tagline: '沉稳包容，存在感强', avatar: 'bf_steady', level: 5, intimacy: 88 },
+    { id: 'bf_young', name: '年下弟弟', type: 'boyfriend', tagline: '真诚粘人，纯真热情', avatar: 'bf_young', level: 2, intimacy: 60 }
   ],
   pets: [
     { id: 'cat_momo', name: '毛球', species: 'cat', level: 3, intimacy: 65 },
@@ -193,7 +193,7 @@ let selectedPersona = null;
 // 初始化
 // ═══════════════════════════════════════════
 function initApp() {
-  const hasOnboarded = localStorage.getItem('embera_onboarded');
+  const hasOnboarded = localStorage.getItem('linger_onboarded');
   const day1Return = onboarding.checkNextDayReturn();
 
   if (!hasOnboarded) {
@@ -225,7 +225,7 @@ function selectGender(gender) {
 window.onPage_home = async function() {
   // 优先使用 onboarding 或已选中的角色
   if (!togetherChar) {
-    const saved = localStorage.getItem('embera_together');
+    const saved = localStorage.getItem('linger_together');
     if (saved) { try { togetherChar = JSON.parse(saved); } catch(e) {} }
   }
   if (togetherChar) {
@@ -304,8 +304,7 @@ window.onPage_them = async function() {
     console.error('加载失败:', e);
     listEl.innerHTML = '<div class="chat-empty"><div class="empty-icon">🫧</div><div class="empty-text">这里还空着...</div></div>';
   }
-};;
-
+};
 function switchThemTab(tab) {
   themTab = tab;
   document.querySelectorAll('.them-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
@@ -360,14 +359,14 @@ function renderThemList(keyword = '') {
 function openChatFromList(id, name, type, avatar) {
   // 同步设为"在一起"人物
   togetherChar = { id, name, type, avatar };
-  localStorage.setItem('embera_together', JSON.stringify({ id, name, type, avatar }));
+  localStorage.setItem('linger_together', JSON.stringify({ id, name, type, avatar }));
   showToast(`⭐ ${name} 已成为你的陪伴`);
   router.go('chat', { charId: id, char: { id, name, type, avatar } });
 }
 
 function setTogetherChar(id, name, type, avatar) {
   togetherChar = { id, name, type, avatar };
-  localStorage.setItem('embera_together', JSON.stringify({ id, name, type, avatar }));
+  localStorage.setItem('linger_together', JSON.stringify({ id, name, type, avatar }));
   showToast(`⭐ ${name} 已成为你的陪伴`);
   router.go('home');
 }
@@ -653,6 +652,60 @@ function resetGender() {
 // ═══════════════════════════════════════════
 // 纪念模式
 // ═══════════════════════════════════════════
+// ═══════════════════════════════════════════
+// 页面钩子：纪念聊天
+// ═══════════════════════════════════════════
+window.onPage_memorial_chat = function() {
+  const list = document.getElementById('memorial-chat-msg-list');
+  if (list) {
+    const emptyCheck = list.querySelector('.chat-empty');
+    // Keep existing messages if any
+  }
+};
+
+function sendMemorialChat() {
+  const input = document.getElementById('memorial-chat-input');
+  const msg = input?.value.trim();
+  if (!msg) return;
+  input.value = '';
+  autoResize(input);
+
+  const list = document.getElementById('memorial-chat-msg-list');
+  if (!list) return;
+
+  // Append user message
+  const userDiv = document.createElement('div');
+  userDiv.className = 'chat-msg user';
+  userDiv.innerHTML = `<div class="chat-bubble">${escapeHtml(msg)}</div><span class="chat-time">${formatTime(new Date().toISOString())}</span>`;
+  list.appendChild(userDiv);
+
+  // Scroll to bottom
+  setTimeout(() => { list.scrollTop = list.scrollHeight; }, 100);
+
+  // Simulate AI reply (memorial mode uses local responses)
+  const replies = [
+    '我在呢，宝贝。',
+    '我一直都在你身边。',
+    '别怕，我不会走的。',
+    '你说，我在听。',
+    '想哭就哭吧，我在这里。',
+    '我永远爱你。',
+    '你过得好吗？',
+    '记得好好吃饭。',
+    '天冷了，多穿点。',
+    '我很想你。',
+  ];
+  const reply = replies[Math.floor(Math.random() * replies.length)];
+
+  setTimeout(() => {
+    const aiDiv = document.createElement('div');
+    aiDiv.className = 'chat-msg ai';
+    aiDiv.innerHTML = `<div class="chat-bubble memorial-bubble">${reply}</div><span class="chat-time">${formatTime(new Date().toISOString())}</span>`;
+    list.appendChild(aiDiv);
+    setTimeout(() => { list.scrollTop = list.scrollHeight; }, 100);
+  }, 800);
+}
+
 let memorialStep = 1;
 
 function nextMemorialStep(step) {

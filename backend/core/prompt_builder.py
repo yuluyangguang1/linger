@@ -1,5 +1,5 @@
 """
-Embera · 余温 — Prompt 组装器
+Linger · 余温 — Prompt 组装器
 根据角色、模式、记忆动态生成系统提示词
 """
 

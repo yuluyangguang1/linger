@@ -1,4 +1,4 @@
-# Embera Agent 人格工程架构
+# Linger Agent 人格工程架构
 
 > Prompt 决定"像不像人"，机制决定"离不离得开"。
 

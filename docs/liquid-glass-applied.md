@@ -1,4 +1,4 @@
-# Apple Liquid Glass 效果已应用到 Embera
+# Apple Liquid Glass 效果已应用到 Linger
 
 ## ✅ 已更新的组件
 
@@ -54,7 +54,7 @@ border: 1px solid rgba(255,255,255,0.12);
 ## 📁 文件结构
 
 ```
-Embera/
+Linger/
 ├── docs/
 │   ├── apple-liquid-glass.html      # 效果演示页面
 │   └── apple-liquid-glass-guide.md  # 学习指南文档
@@ -113,4 +113,4 @@ Embera/
 
 ---
 
-**✨ 现在 Embera 拥有 Apple Liquid Glass 风格的现代化 UI！**
+**✨ 现在 Linger 拥有 Apple Liquid Glass 风格的现代化 UI！**
