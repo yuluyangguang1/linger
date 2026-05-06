@@ -31,6 +31,15 @@ from models.memory import Memory
 from models.pet import Pet
 from models.memorial import MemorialCharacter
 
+# mem0 记忆层
+try:
+    from services.memory_layer import linger_memory
+    MEM0_ENABLED = linger_memory.enabled
+except Exception as e:
+    print(f"⚠️ mem0 导入失败: {e}")
+    MEM0_ENABLED = False
+    linger_memory = None
+
 app = FastAPI(title="Linger API", version="0.3.0")
 
 # ═══════════════════════════════════════════
@@ -321,10 +330,41 @@ async def call_llm_stream(messages: List[dict], model: str = None) -> AsyncGener
 async def health():
     return {
         "status": "ok",
-        "version": "0.3.0",
+        "version": "0.4.0",
         "models": TIER_MODELS,
         "db": "sqlite",
+        "mem0": MEM0_ENABLED,
     }
+
+
+@app.get("/api/memories/search")
+async def memories_search(
+    q: str,
+    user_id: str = "default",
+    limit: int = 5,
+):
+    """搜索 mem0 记忆"""
+    if not MEM0_ENABLED or not linger_memory:
+        return {"status": "disabled", "memories": []}
+    
+    try:
+        results = linger_memory.search(q, user_id=user_id, limit=limit)
+        return {"status": "ok", "memories": results}
+    except Exception as e:
+        return {"status": "error", "message": str(e), "memories": []}
+
+
+@app.get("/api/memories/all")
+async def memories_all(user_id: str = "default"):
+    """获取用户所有 mem0 记忆"""
+    if not MEM0_ENABLED or not linger_memory:
+        return {"status": "disabled", "memories": []}
+    
+    try:
+        results = linger_memory.get_all(user_id=user_id)
+        return {"status": "ok", "memories": results}
+    except Exception as e:
+        return {"status": "error", "message": str(e), "memories": []}
 
 
 # ═══════════════════════════════════════════
@@ -387,6 +427,17 @@ async def chat_send(req: ChatRequest, session: AsyncSession = Depends(get_db)):
     memory_captured = extract_memory(req.message)
     if memory_captured:
         await add_memory_db(session, req.user_id, req.char_id, memory_captured, req.message)
+
+    # mem0 记忆层：自动存储对话记忆
+    if MEM0_ENABLED and linger_memory:
+        try:
+            linger_memory.add(
+                f"用户对{req.char_id}说: {req.message}",
+                user_id=req.user_id,
+                metadata={"char_id": req.char_id, "mode": req.mode}
+            )
+        except Exception as e:
+            print(f"mem0 add error: {e}")
 
     base_delay = 1500 if req.mode == "memorial" else 800
     elapsed = int((time.time() - start) * 1000)
@@ -453,6 +504,17 @@ async def chat_stream(req: ChatRequest, session: AsyncSession = Depends(get_db))
         memory_captured = extract_memory(req.message)
         if memory_captured:
             await add_memory_db(session, req.user_id, req.char_id, memory_captured, req.message)
+
+        # mem0 记忆层：自动存储对话记忆
+        if MEM0_ENABLED and linger_memory:
+            try:
+                linger_memory.add(
+                    f"用户对{req.char_id}说: {req.message}",
+                    user_id=req.user_id,
+                    metadata={"char_id": req.char_id, "mode": req.mode}
+                )
+            except Exception as e:
+                print(f"mem0 add error: {e}")
 
         final_tier = await check_tier_db(session, req.user_id)
         yield "data: " + json.dumps({"type": "tier_info", "tier_info": final_tier}) + "\n\n"
