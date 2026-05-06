@@ -40,6 +40,15 @@ except Exception as e:
     MEM0_ENABLED = False
     linger_memory = None
 
+# TTS 语音合成
+try:
+    from services.tts_service import tts_service
+    TTS_ENABLED = tts_service.edge_tts_available or tts_service.chattts_available
+except Exception as e:
+    print(f"⚠️ TTS 导入失败: {e}")
+    TTS_ENABLED = False
+    tts_service = None
+
 app = FastAPI(title="Linger API", version="0.3.0")
 
 # ═══════════════════════════════════════════
@@ -365,6 +374,44 @@ async def memories_all(user_id: str = "default"):
         return {"status": "ok", "memories": results}
     except Exception as e:
         return {"status": "error", "message": str(e), "memories": []}
+
+
+# ═══════════════════════════════════════════
+# 路由 — TTS 语音合成
+# ═══════════════════════════════════════════
+
+class TTSRequest(BaseModel):
+    text: str
+    char_id: str = "gf_gentle"
+    voice: Optional[str] = None
+    rate: str = "+0%"
+    volume: str = "+0%"
+
+@app.post("/api/tts/generate")
+async def tts_generate(req: TTSRequest):
+    """生成语音"""
+    if not TTS_ENABLED or not tts_service:
+        return {"status": "disabled", "message": "TTS not available"}
+    
+    try:
+        result = await tts_service.generate_speech(
+            text=req.text,
+            char_id=req.char_id,
+            voice=req.voice,
+            rate=req.rate,
+            volume=req.volume,
+        )
+        return result
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.get("/api/tts/voices")
+async def tts_voices():
+    """获取可用声音列表"""
+    if not TTS_ENABLED or not tts_service:
+        return {"status": "disabled", "voices": {}}
+    
+    return {"status": "ok", "voices": tts_service.get_voices()}
 
 
 # ═══════════════════════════════════════════
