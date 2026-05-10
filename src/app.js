@@ -1,118 +1,14 @@
 /**
- * Linger · 余温 — API & 全局
+ * Linger · 余温 — 前端主应用（纯静态 BYOK 版）
+ *
+ * 数据来源：
+ *   - 角色 / 宠物 / 聊天历史  → localStorage（LingerStore）
+ *   - 聊天回复  → 浏览器直连 LLM（LingerLLM，用户自带 Key）
+ *                 未配置 Key 时退化为脚本化回复（onboarding 的首日剧本）
  */
 
-// ═══════════════════════════════════════════
-// API 配置（支持多环境）
-// ═══════════════════════════════════════════
-const getApiBase = () => {
-  // 1. 优先使用用户自定义设置
-  const custom = localStorage.getItem('rv_api_base');
-  if (custom) return custom;
-  
-  // 2. 开发环境自动用 localhost
-  const hostname = window.location.hostname;
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return 'http://localhost:8000';
-  }
-  
-  // 3. 生产环境使用相对路径（假设后端在同一域名）
-  // 如果是 GitHub Pages，需要后端也部署在同域名的 /api 路径
-  return '/api';
-};
-
-const API_BASE = getApiBase();
-
-// ═══════════════════════════════════════════
-// 模拟数据（GitHub Pages 演示用）
-// ═══════════════════════════════════════════
-const MOCK_DATA = {
-  characters: [
-    { id: 'gf_gentle', name: '温柔学姐', type: 'girlfriend', tagline: '温柔、安静、善于倾听', avatar: 'gf_gentle', level: 5, intimacy: 85 },
-    { id: 'gf_bubbly', name: '元气少女', type: 'girlfriend', tagline: '活泼开朗，能量满满', avatar: 'gf_bubbly', level: 4, intimacy: 72 },
-    { id: 'gf_tsundere', name: '傲娇大小姐', type: 'girlfriend', tagline: '口是心非，内心柔软', avatar: 'gf_tsundere', level: 3, intimacy: 45 },
-    { id: 'gf_intellectual', name: '知性御姐', type: 'girlfriend', tagline: '沉稳通透，值得信赖', avatar: 'gf_intellectual', level: 5, intimacy: 90 },
-    { id: 'bf_sunny', name: '阳光学长', type: 'boyfriend', tagline: '开朗可靠，温暖如光', avatar: 'bf_sunny', level: 4, intimacy: 78 },
-    { id: 'bf_cold', name: '腹黑总裁', type: 'boyfriend', tagline: '冷静洞察，一针见血', avatar: 'bf_cold', level: 3, intimacy: 35 },
-    { id: 'bf_steady', name: '稳重哥哥', type: 'boyfriend', tagline: '沉稳包容，存在感强', avatar: 'bf_steady', level: 5, intimacy: 88 },
-    { id: 'bf_young', name: '年下弟弟', type: 'boyfriend', tagline: '真诚粘人，纯真热情', avatar: 'bf_young', level: 2, intimacy: 60 }
-  ],
-  pets: [
-    { id: 'cat_momo', name: '毛球', species: 'cat', level: 3, intimacy: 65 },
-    { id: 'dog_wang', name: '旺财', species: 'dog', level: 4, intimacy: 80 }
-  ],
-  memorial: []
-};
-
-console.log('🌐 API Base:', API_BASE);
-
-const api = {
-  base: API_BASE,
-  async request(path, options = {}) {
-    const url = `${this.base}${path}`;
-    const config = { headers: { 'Content-Type': 'application/json' }, ...options };
-    if (config.body && typeof config.body === 'object') config.body = JSON.stringify(config.body);
-    const res = await fetch(url, config);
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: res.statusText }));
-      throw new Error(err.detail || '请求失败');
-    }
-    return res.json();
-  },
-  characters: {
-    list: () => api.request('/api/characters/list'),
-    get: (id) => api.request(`/api/characters/${id}`),
-    create: (data) => api.request('/api/characters/create', { method: 'POST', body: data }),
-    templates: () => api.request('/api/characters/templates'),
-  },
-  chat: {
-    send: (data) => api.request('/api/chat/send', { method: 'POST', body: data }),
-    stream: async function*(data) {
-      const res = await fetch(`${api.base}/api/chat/stream`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ detail: res.statusText }));
-        throw new Error(err.detail || '请求失败');
-      }
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop();
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try { yield JSON.parse(line.slice(6)); } catch (e) {}
-          }
-        }
-      }
-    },
-    history: (charId, limit = 50) => api.request(`/api/chat/history/${charId}?limit=${limit}`),
-  },
-  pets: {
-    list: () => api.request('/api/pets/list'),
-    create: (data) => api.request('/api/pets/create', { method: 'POST', body: data }),
-    action: (petId, action) => api.request(`/api/pets/${petId}/action`, { method: 'POST', body: { action } }),
-    species: () => api.request('/api/pets/species'),
-  },
-  memorial: {
-    list: () => api.request('/api/memorial/list'),
-    create: (data) => api.request('/api/memorial/create', { method: 'POST', body: data }),
-  },
-  upload: {
-    photo: async (file) => {
-      const fd = new FormData(); fd.append('file', file);
-      const res = await fetch(`${api.base}/api/upload/photo`, { method: 'POST', body: fd });
-      return res.json();
-    },
-  },
-};
+const Store = window.LingerStore;
+const LLM = window.LingerLLM;
 
 // ─── 路由 ───
 const router = {
@@ -143,7 +39,7 @@ function showToast(message, duration = 2000) {
   setTimeout(() => toast.classList.remove('show'), duration);
 }
 
-// ─── 时间格式化 ───
+// ─── 工具 ───
 function formatTime(dateStr) {
   const d = new Date(dateStr); const now = new Date(); const diff = now - d;
   if (diff < 60000) return '刚刚';
@@ -151,10 +47,8 @@ function formatTime(dateStr) {
   if (diff < 86400000) return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
   return `${d.getMonth() + 1}月${d.getDate()}日`;
 }
-
-// ─── 工具 ───
 function escapeHtml(text) {
-  const div = document.createElement('div'); div.textContent = text; return div.innerHTML;
+  const div = document.createElement('div'); div.textContent = text == null ? '' : String(text); return div.innerHTML;
 }
 function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 100) + 'px'; }
 
@@ -166,22 +60,20 @@ const AVATAR_MAP = {
   bf_steady: 'src/assets/avatars/bf_steady.jpg', bf_young: 'src/assets/avatars/bf_young.jpg',
 };
 const TYPE_EMOJI = {
-  girlfriend: 'frontend/src/assets/icons/在一起.png',
-  boyfriend: 'frontend/src/assets/icons/在一起.png',
-  friend: 'frontend/src/assets/icons/他们.png',
-  family: 'frontend/src/assets/icons/在一起.png',
-  mentor: 'frontend/src/assets/icons/陪伴.png',
-  pet: 'frontend/src/assets/icons/陪伴.png',
-  memorial: 'frontend/src/assets/icons/数字怀念.png'
+  girlfriend: 'src/assets/icons/在一起.png',
+  boyfriend: 'src/assets/icons/在一起.png',
+  friend: 'src/assets/icons/他们.png',
+  family: 'src/assets/icons/在一起.png',
+  mentor: 'src/assets/icons/陪伴.png',
+  pet: 'src/assets/icons/陪伴.png',
+  memorial: 'src/assets/icons/数字怀念.png',
 };
 const PET_EMOJI = {
-  dog: 'frontend/src/assets/icons/陪伴.png',
-  cat: 'frontend/src/assets/icons/陪伴.png'
+  dog: 'src/assets/icons/陪伴.png',
+  cat: 'src/assets/icons/陪伴.png',
 };
 
-// ═══════════════════════════════════════════
-// 全局状态
-// ═══════════════════════════════════════════
+// ─── 全局状态 ───
 let userGender = localStorage.getItem('rv_gender') || null;
 let togetherChar = null;
 let currentCharId = null;
@@ -193,22 +85,24 @@ let selectedPersona = null;
 // 初始化
 // ═══════════════════════════════════════════
 function initApp() {
+  Store.seedDefaultPetsIfEmpty();
+
   const hasOnboarded = localStorage.getItem('linger_onboarded');
   const day1Return = onboarding.checkNextDayReturn();
 
   if (!hasOnboarded) {
-    // 新用户：启动冷启动流程
     onboarding.playOpening();
   } else if (day1Return) {
-    // 第二天回访
+    // 确保角色已落地
+    Store.ensureCharacter(day1Return.char.id);
     togetherChar = { id: day1Return.char.id, name: day1Return.char.name, avatar: day1Return.char.id };
+    localStorage.setItem('linger_together', JSON.stringify(togetherChar));
     router.go('home');
     setTimeout(() => {
-      const stateEl = document.getElementById('together-state');
-      if (stateEl) stateEl.innerHTML = `<span class="together-state-text">${day1Return.line}</span>`;
+      const nameEl = document.getElementById('home-char-greeting');
+      if (nameEl) nameEl.textContent = day1Return.line;
     }, 1000);
   } else {
-    // 老用户：正常进入
     router.go('home');
   }
 }
@@ -222,39 +116,47 @@ function selectGender(gender) {
 // ═══════════════════════════════════════════
 // 页面钩子：在一起
 // ═══════════════════════════════════════════
-window.onPage_home = async function() {
-  // 优先使用 onboarding 或已选中的角色
+window.onPage_home = function() {
   if (!togetherChar) {
     const saved = localStorage.getItem('linger_together');
     if (saved) { try { togetherChar = JSON.parse(saved); } catch(e) {} }
   }
-  if (togetherChar) {
-    const nameEl = document.getElementById('home-char-name');
-    if (nameEl) nameEl.textContent = togetherChar.name;
-    const bgEl = document.getElementById('home-hero-bg');
-    const avatarUrl = AVATAR_MAP[togetherChar.avatar] || togetherChar.avatar || '';
-    if (bgEl && avatarUrl) {
-      bgEl.style.backgroundImage = `url(${avatarUrl})`;
+  // 如果没有 togetherChar，挑用户已有的第一个角色
+  if (!togetherChar) {
+    const chars = Store.listCharacters();
+    if (chars.length > 0) {
+      const c = chars[0];
+      togetherChar = { id: c.id, name: c.name, type: c.type, avatar: c.avatar };
+      localStorage.setItem('linger_together', JSON.stringify(togetherChar));
     }
+  }
+
+  const nameEl = document.getElementById('home-char-name');
+  const greetEl = document.getElementById('home-char-greeting');
+  const tagsEl = document.getElementById('home-char-tags');
+  const bgEl = document.getElementById('home-hero-bg');
+  const badgeValEl = document.getElementById('home-intimacy-val');
+
+  if (!togetherChar) {
+    if (nameEl) nameEl.textContent = '还没有人陪伴你';
+    if (greetEl) greetEl.textContent = '去「他们」页面添加一个吧';
+    if (tagsEl) tagsEl.innerHTML = '';
     return;
   }
-  try {
-    const chars = await api.characters.list();
-    if (chars && chars.length > 0) {
-      togetherChar = chars[0];
-      const nameEl = document.getElementById('home-char-name');
-      if (nameEl) nameEl.textContent = togetherChar.name;
-      const bgEl = document.getElementById('home-hero-bg');
-      const avatarUrl = AVATAR_MAP[togetherChar.avatar] || togetherChar.avatar || '';
-      if (bgEl && avatarUrl) {
-        bgEl.style.backgroundImage = `url(${avatarUrl})`;
-      }
-    } else {
-      const nameEl = document.getElementById('home-char-name');
-      if (nameEl) nameEl.textContent = '还没有人陪伴你';
-    }
-  } catch (e) {
-    console.log('加载角色失败', e);
+
+  const fullChar = Store.getCharacter(togetherChar.id) || Store.ensureCharacter(togetherChar.id);
+  const persona = Store.getPersona(togetherChar.id);
+
+  if (nameEl) nameEl.textContent = fullChar.name;
+  if (greetEl) greetEl.textContent = persona?.first_meet || '今天想聊点什么？';
+  if (tagsEl && persona) {
+    const tags = (persona.tagline || '').split(/[、,，\s]+/).filter(Boolean).slice(0, 3);
+    tagsEl.innerHTML = tags.map(t => `<span class="home-tag">${escapeHtml(t)}</span>`).join('');
+  }
+  if (badgeValEl) badgeValEl.textContent = `${Math.floor(fullChar.intimacy || 0)}%`;
+  if (bgEl) {
+    const avatarUrl = AVATAR_MAP[togetherChar.avatar] || AVATAR_MAP[togetherChar.id];
+    if (avatarUrl) bgEl.style.backgroundImage = `url(${avatarUrl})`;
   }
 };
 
@@ -269,42 +171,27 @@ function enterChatFromTogether() {
 let themTab = 'all';
 let themData = { characters: [], pets: [], memorial: [] };
 
-window.onPage_them = async function() {
+window.onPage_them = function() {
   const listEl = document.getElementById('them-list');
   if (!listEl) return;
-  listEl.innerHTML = '<div class="chat-empty"><div class="loading"><span class="loading-dots">加载中</span></div></div>';
-  
-  try {
-    // 生产环境且没有自定义 API 配置时，使用模拟数据
-    const isProd = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-    const customApi = localStorage.getItem('rv_api_base');
-    
-    let chars = [], pets = { pets: [] };
-    
-    if (isProd && !customApi) {
-      // 生产环境且无自定义 API → 使用模拟数据
-      console.log('🎨 使用模拟数据（演示模式）');
-      await new Promise(r => setTimeout(r, 300)); // 模拟网络延迟
-      chars = MOCK_DATA.characters;
-      pets = MOCK_DATA.pets;
-    } else {
-      // 开发环境或自定义 API → 请求真实后端
-      const [c, p] = await Promise.all([
-        api.characters.list().catch(err => { console.error('加载角色失败:', err); return []; }),
-        api.pets.list().catch(err => { console.error('加载宠物失败:', err); return { pets: [] }; })
-      ]);
-      chars = c;
-      pets = p;
-    }
-    
-    themData.characters = Array.isArray(chars) ? chars : [];
-    themData.pets = pets.pets || [];
-    renderThemList();
-  } catch (e) {
-    console.error('加载失败:', e);
-    listEl.innerHTML = '<div class="chat-empty"><div class="empty-icon">🫧</div><div class="empty-text">这里还空着...</div></div>';
-  }
+
+  // 把所有预置人设也列出来（就算用户没创建过，也能看到选择）
+  const userChars = Store.listCharacters();
+  const userCharIds = new Set(userChars.map(c => c.id));
+  const allPersonaCards = Object.values(Store.PERSONAS).map(p => {
+    const existing = userChars.find(c => c.id === p.id);
+    return existing || {
+      id: p.id, name: p.name, type: p.type, avatar: p.id,
+      tagline: p.tagline, intimacy: 0, level: 1, _preview: true,
+    };
+  });
+
+  themData.characters = allPersonaCards;
+  themData.pets = Store.listPets();
+  themData.memorial = Store.listMemorials();
+  renderThemList();
 };
+
 function switchThemTab(tab) {
   themTab = tab;
   document.querySelectorAll('.them-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
@@ -340,7 +227,7 @@ function renderThemList(keyword = '') {
       ? (PET_EMOJI[it.species] ? `<img src="${PET_EMOJI[it.species]}" alt="">` : '🐾')
       : (TYPE_EMOJI[it.type] ? `<img src="${TYPE_EMOJI[it.type]}" alt="">` : '陪伴');
     const img = (!isPet && AVATAR_MAP[it.avatar]) ? `<img src="${AVATAR_MAP[it.avatar]}" alt="">` : '';
-    const lv = it.level || it.intimacy || 0;
+    const lv = it.level || 1;
     const intimacy = it.intimacy || 0;
     const isTogether = togetherChar && togetherChar.id === it.id;
     const starBtn = !isPet ? `<button class="them-card-star ${isTogether ? 'active' : ''}" onclick="event.stopPropagation(); setTogetherChar('${it.id}', '${escapeHtml(it.name)}', '${it.type}', '${it.avatar || ''}')" title="设为陪伴">${isTogether ? '★' : '☆'}</button>` : '';
@@ -357,14 +244,14 @@ function renderThemList(keyword = '') {
 }
 
 function openChatFromList(id, name, type, avatar) {
-  // 同步设为"在一起"人物
+  Store.ensureCharacter(id);
   togetherChar = { id, name, type, avatar };
   localStorage.setItem('linger_together', JSON.stringify({ id, name, type, avatar }));
-  showToast(`⭐ ${name} 已成为你的陪伴`);
   router.go('chat', { charId: id, char: { id, name, type, avatar } });
 }
 
 function setTogetherChar(id, name, type, avatar) {
+  Store.ensureCharacter(id);
   togetherChar = { id, name, type, avatar };
   localStorage.setItem('linger_together', JSON.stringify({ id, name, type, avatar }));
   showToast(`⭐ ${name} 已成为你的陪伴`);
@@ -374,27 +261,22 @@ function setTogetherChar(id, name, type, avatar) {
 // ═══════════════════════════════════════════
 // 页面钩子：宠物列表
 // ═══════════════════════════════════════════
-window.onPage_pets = async function() {
+window.onPage_pets = function() {
   const listEl = document.getElementById('pets-list');
   if (!listEl) return;
-  try {
-    const data = await api.pets.list();
-    const pets = data.pets || [];
-    if (pets.length === 0) {
-      listEl.innerHTML = '<div class="chat-empty" style="grid-column:1/-1;"><div class="empty-icon">🐾</div><div class="empty-text">还没有宠物...</div></div>';
-      return;
-    }
-    listEl.innerHTML = pets.map(p => `
-      <div class="them-card" onclick="openPet('${p.id}')">
-        <div class="them-card-avatar"><img src="${PET_EMOJI[p.species] || 'frontend/src/assets/icons/陪伴.png'}" alt="" class="them-card-avatar-img"></div>
-        <div class="them-card-name">${escapeHtml(p.name)}</div>
-        <div class="them-card-lv">Lv.${p.level} · 亲密度 ${Math.floor(p.intimacy)}%</div>
-        <div class="them-card-intimacy"><div class="them-card-intimacy-fill" style="width:${Math.min(p.intimacy,100)}%"></div></div>
-      </div>
-    `).join('');
-  } catch (e) {
-    listEl.innerHTML = '<div class="chat-empty" style="grid-column:1/-1;"><div class="empty-icon">🐾</div><div class="empty-text">加载失败</div></div>';
+  const pets = Store.listPets();
+  if (pets.length === 0) {
+    listEl.innerHTML = '<div class="chat-empty" style="grid-column:1/-1;"><div class="empty-icon">🐾</div><div class="empty-text">还没有宠物...</div></div>';
+    return;
   }
+  listEl.innerHTML = pets.map(p => `
+    <div class="them-card" onclick="openPet('${p.id}')">
+      <div class="them-card-avatar"><img src="${PET_EMOJI[p.species] || 'src/assets/icons/陪伴.png'}" alt="" class="them-card-avatar-img"></div>
+      <div class="them-card-name">${escapeHtml(p.name)}</div>
+      <div class="them-card-lv">Lv.${p.level} · 亲密度 ${Math.floor(p.intimacy)}%</div>
+      <div class="them-card-intimacy"><div class="them-card-intimacy-fill" style="width:${Math.min(p.intimacy,100)}%"></div></div>
+    </div>
+  `).join('');
 };
 
 // ═══════════════════════════════════════════
@@ -426,29 +308,31 @@ window.onPage_create = function() {
   `).join('');
 };
 
-async function selectCreateType(type) {
+function selectCreateType(type) {
   selectedType = type;
   document.getElementById('create-step1').classList.add('hidden');
   document.getElementById('create-step2').classList.remove('hidden');
   document.getElementById('create-step-num-1').classList.remove('active');
   document.getElementById('create-step-num-2').classList.add('active');
-  try {
-    const data = await api.characters.templates();
-    const templates = (data.templates || []).filter(t => t.type === type);
-    const grid = document.getElementById('create-persona-grid');
-    grid.innerHTML = templates.map(t => {
-      const avatarUrl = AVATAR_MAP[t.id];
-      return `
-        <div class="create-persona-item" onclick="selectPersona('${t.id}', this)">
-          <div class="create-persona-avatar">${avatarUrl ? `<img src="${avatarUrl}">` : ''}</div>
-          <div class="create-persona-name">${t.name}</div>
-          <div class="create-persona-tags">${(t.personality || []).map(p => `<span class="create-persona-tag">${p}</span>`).join('')}</div>
-        </div>
-      `;
-    }).join('');
-  } catch (e) {
-    showToast('加载人设失败');
+
+  const templates = Store.listPersonasByType(type);
+  const grid = document.getElementById('create-persona-grid');
+  if (templates.length === 0) {
+    grid.innerHTML = '<div class="chat-empty" style="grid-column:1/-1;"><div class="empty-text">这个类型还没有预置人设，敬请期待</div></div>';
+    return;
   }
+  grid.innerHTML = templates.map(t => {
+    const avatarUrl = AVATAR_MAP[t.id];
+    const tagSpans = (t.tagline || '').split(/[、,，\s]+/).filter(Boolean).slice(0,3)
+      .map(p => `<span class="create-persona-tag">${escapeHtml(p)}</span>`).join('');
+    return `
+      <div class="create-persona-item" onclick="selectPersona('${t.id}', this)">
+        <div class="create-persona-avatar">${avatarUrl ? `<img src="${avatarUrl}">` : ''}</div>
+        <div class="create-persona-name">${escapeHtml(t.name)}</div>
+        <div class="create-persona-tags">${tagSpans}</div>
+      </div>
+    `;
+  }).join('');
 }
 
 function selectPersona(id, el) {
@@ -457,16 +341,17 @@ function selectPersona(id, el) {
   el.classList.add('selected');
 }
 
-async function doCreateCharacter() {
+function doCreateCharacter() {
   if (!selectedPersona) { showToast('请先选择一个人设'); return; }
   const customName = document.getElementById('create-custom-name').value.trim();
   try {
-    showToast('创建中...');
-    const data = await api.characters.create({ persona_id: selectedPersona, custom_name: customName || null });
-    showToast(`✨ ${data.name} 已创建！`);
+    const ch = Store.createCharacter({ persona_id: selectedPersona, custom_name: customName || null });
+    togetherChar = { id: ch.id, name: ch.name, type: ch.type, avatar: ch.avatar };
+    localStorage.setItem('linger_together', JSON.stringify(togetherChar));
+    showToast(`✨ ${ch.name} 已创建`);
     router.go('home');
   } catch (e) {
-    showToast('创建失败: ' + e.message);
+    showToast('创建失败：' + e.message);
   }
 }
 
@@ -490,17 +375,50 @@ window.onPage_chat = function(params) {
 
 function openChat(charId, name, type, personaId) {
   currentCharId = charId;
+  Store.ensureCharacter(charId);
+
   const nameEl = document.getElementById('chat-char-name');
   if (nameEl) nameEl.textContent = name;
   const avatarEl = document.getElementById('chat-header-avatar');
-  const avatarUrl = AVATAR_MAP[personaId];
+  const avatarUrl = AVATAR_MAP[personaId] || AVATAR_MAP[charId];
   if (avatarEl) {
     if (avatarUrl) avatarEl.innerHTML = `<img src="${avatarUrl}" alt="">`;
-    else avatarEl.innerHTML = `<img src="${TYPE_EMOJI[type] || 'frontend/src/assets/icons/陪伴.png'}" alt="" class="chat-header-avatar-img">`;
+    else avatarEl.innerHTML = `<img src="${TYPE_EMOJI[type] || 'src/assets/icons/陪伴.png'}" alt="" class="chat-header-avatar-img">`;
   }
+
+  // 渲染历史
+  const history = Store.getChatHistory(charId);
   const list = document.getElementById('chat-msg-list');
-  if (list) list.innerHTML = '<div class="chat-empty"><div class="chat-empty-icon">💬</div><div class="chat-empty-text">开始你们的第一次对话吧</div></div>';
-  loadUserTier();
+  if (!list) return;
+  if (history.length === 0) {
+    list.innerHTML = '<div class="chat-empty"><div class="chat-empty-icon">💬</div><div class="chat-empty-text">开始你们的第一次对话吧</div></div>';
+  } else {
+    list.innerHTML = history.map(h => createMsgHtml(h.role === 'assistant' ? 'ai' : 'user', h.content, h.ts)).join('');
+    scrollToBottom();
+  }
+
+  // 更新状态药丸：显示当前 LLM 模式
+  updateChatModePill();
+}
+
+function updateChatModePill() {
+  const pill = document.getElementById('chat-tier-pill');
+  const textEl = document.getElementById('chat-tier-text');
+  const remainEl = document.getElementById('chat-tier-remain');
+  if (!pill || !textEl || !remainEl) return;
+  if (LLM.hasConfig()) {
+    const cfg = LLM.getConfig();
+    pill.style.display = 'flex';
+    textEl.textContent = cfg.providerLabel || 'LLM';
+    remainEl.textContent = '已连接';
+    pill.classList.remove('danger');
+    pill.classList.remove('warning');
+  } else {
+    pill.style.display = 'flex';
+    textEl.textContent = '演示';
+    remainEl.textContent = '未配置';
+    pill.classList.add('warning');
+  }
 }
 
 function createMsgHtml(role, content, time) {
@@ -512,127 +430,183 @@ async function sendChat() {
   const msg = input?.value.trim();
   if (!msg || !currentCharId) return;
   input.value = ''; autoResize(input);
+
   const list = document.getElementById('chat-msg-list');
   const emptyEl = list.querySelector('.chat-empty');
   if (emptyEl) emptyEl.remove();
-  list.innerHTML += createMsgHtml('user', msg, new Date().toISOString());
+
+  // 渲染用户气泡 + 持久化
+  list.insertAdjacentHTML('beforeend', createMsgHtml('user', msg, Date.now()));
+  Store.appendChatMessage(currentCharId, 'user', msg);
   scrollToBottom();
+
+  // 先尝试 onboarding 的剧本化回复（首日体验）
+  let scripted = null;
+  try { scripted = onboarding?.onUserMessage ? onboarding.onUserMessage(msg) : null; } catch (e) {}
+
+  // 没有 LLM 配置时，必须依赖 scripted / fallback
+  const hasLLM = LLM.hasConfig();
 
   const msgId = 'msg-' + Date.now();
-  list.innerHTML += `<div class="chat-msg ai" id="${msgId}"><div class="chat-bubble"></div><span class="chat-time">${formatTime(new Date().toISOString())}</span></div>`;
+  list.insertAdjacentHTML('beforeend',
+    `<div class="chat-msg ai" id="${msgId}"><div class="chat-bubble"></div><span class="chat-time">${formatTime(Date.now())}</span></div>`);
   scrollToBottom();
-
   const bubbleEl = document.querySelector(`#${msgId} .chat-bubble`);
+
+  // 优先：剧本回复（首日前几句保持"设计感"）
+  if (scripted && scripted.text) {
+    await typeText(bubbleEl, scripted.text);
+    Store.appendChatMessage(currentCharId, 'assistant', scripted.text);
+    Store.bumpIntimacy(currentCharId, 1);
+    scrollToBottom();
+    return;
+  }
+
+  // 无 Key：降级为本地 fallback
+  if (!hasLLM) {
+    const fallback = pickFallbackReply(currentCharId, msg);
+    await typeText(bubbleEl, fallback);
+    Store.appendChatMessage(currentCharId, 'assistant', fallback);
+    Store.bumpIntimacy(currentCharId, 1);
+    scrollToBottom();
+    return;
+  }
+
+  // 有 Key：调真 LLM
+  const persona = Store.getPersona(currentCharId);
+  const systemPrompt = LLM.buildSystemPrompt(persona || { name: '陪伴者' }, { userGender });
+  const history = Store.getChatHistory(currentCharId).slice(-20);
+  // history 的末尾就是刚刚 append 的 user 消息，包含它
+  const messages = [{ role: 'system', content: systemPrompt }]
+    .concat(history.map(h => ({ role: h.role, content: h.content })));
+
   let fullText = '';
-
   try {
-    const stream = api.chat.stream({
-      char_id: currentCharId, message: msg,
-      user_id: 'user_' + (userGender || 'unknown'), mode: 'companion',
-    });
-
-    for await (const chunk of stream) {
+    for await (const chunk of LLM.streamChat(messages)) {
       if (chunk.type === 'chunk') {
         fullText += chunk.content;
-        if (bubbleEl) bubbleEl.textContent = fullText;
+        bubbleEl.textContent = fullText;
         scrollToBottom();
-      } else if (chunk.type === 'tier_info' && chunk.tier_info) {
-        updateTierPill(chunk.tier_info);
       } else if (chunk.type === 'error') {
-        if (bubbleEl) bubbleEl.textContent = chunk.content;
+        bubbleEl.textContent = chunk.content;
         scrollToBottom();
-        break;
+        return;
       } else if (chunk.type === 'done') {
         break;
       }
     }
   } catch (e) {
-    if (bubbleEl) bubbleEl.textContent = '抱歉，出了点问题，请稍后再试。';
+    bubbleEl.textContent = '抱歉，出了点问题：' + (e.message || e);
     scrollToBottom();
+    return;
+  }
+
+  if (fullText) {
+    Store.appendChatMessage(currentCharId, 'assistant', fullText);
+    Store.bumpIntimacy(currentCharId, 1);
   }
 }
 
-function updateTierPill(info) {
-  const pill = document.getElementById('chat-tier-pill');
-  const textEl = document.getElementById('chat-tier-text');
-  const remainEl = document.getElementById('chat-tier-remain');
-  if (!pill || !textEl || !remainEl) return;
-  pill.style.display = 'flex';
-  textEl.textContent = info.tier_label || info.tier;
-  remainEl.textContent = info.remaining;
-  pill.classList.remove('warning', 'danger');
-  if (info.remaining <= 3) pill.classList.add('danger');
-  else if (info.remaining <= 8) pill.classList.add('warning');
+// 逐字显示（给剧本/fallback 用，体验更接近流式）
+async function typeText(el, text, speed = 40) {
+  el.textContent = '';
+  for (const ch of text) {
+    el.textContent += ch;
+    await new Promise(r => setTimeout(r, speed));
+  }
 }
 
-async function loadUserTier() {
-  try {
-    const info = await api.request('/api/user/status?user_id=user_' + (userGender || 'unknown'));
-    updateTierPill(info);
-  } catch (e) { /* ignore */ }
+const FALLBACK_POOL = [
+  '嗯，我在听。',
+  '我在呢。',
+  '慢慢说，不急。',
+  '嗯…',
+  '待会儿也可以再说。',
+  '你说。',
+  '知道了。',
+  '今天怎么样？',
+];
+function pickFallbackReply(charId, userText) {
+  const persona = Store.getPersona(charId);
+  // 根据人设挑不同口气
+  const name = persona?.name;
+  const map = {
+    '腹黑总裁': ['嗯。', '说下去。', '我看着呢。', '不必解释。'],
+    '傲娇大小姐': ['哼。', '…听到了。', '知道了知道了。', '别说了我在听。'],
+    '年下弟弟': ['我在！', '嗯嗯！', '你说你说，我都想听。'],
+    '温柔学姐': ['嗯。', '我在呢。', '慢慢说。', '不急。'],
+    '元气少女': ['我在我在！', '嗯嗯！然后呢？', '哎，我懂！'],
+    '稳重哥哥': ['嗯。', '我在。', '你说。', '不用急。'],
+    '知性御姐': ['嗯。', '听到了。', '继续。'],
+    '阳光学长': ['嗯，听着呢。', '来，说说。', '没事，慢慢讲。'],
+  };
+  const pool = map[name] || FALLBACK_POOL;
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
 function scrollToBottom() {
-  const container = document.querySelector('.chat-messages');
-  if (container) setTimeout(() => { container.scrollTop = container.scrollHeight; }, 100);
+  const container = document.querySelector('#page-chat .chat-messages, #page-memorial-chat .chat-messages');
+  if (container) setTimeout(() => { container.scrollTop = container.scrollHeight; }, 60);
 }
 
-function showCharInfo() { showToast('角色详情功能开发中'); }
+function showCharInfo() {
+  if (!currentCharId) return;
+  const ch = Store.getCharacter(currentCharId);
+  const persona = Store.getPersona(currentCharId);
+  if (!ch || !persona) { showToast('角色信息未加载'); return; }
+  showToast(`${ch.name} · Lv.${ch.level} · 亲密度 ${Math.floor(ch.intimacy)}%`, 2500);
+}
 
 // ═══════════════════════════════════════════
 // 页面钩子：宠物详情
 // ═══════════════════════════════════════════
-window.onPage_pet = async function() {
+window.onPage_pet = function() {
   if (!currentPetId) return;
-  try {
-    const data = await api.pets.list();
-    const pet = (data.pets || []).find(p => p.id === currentPetId);
-    if (!pet) return;
-    document.getElementById('pet-name').textContent = pet.name;
-    document.getElementById('pet-hero-avatar').innerHTML = `<img src="${PET_EMOJI[pet.species] || 'frontend/src/assets/icons/陪伴.png'}" alt="" class="pet-hero-avatar-img">`;
-    const speechEl = document.getElementById('pet-speech');
-    if (speechEl) {
-      if (pet.intimacy < 20) speechEl.textContent = pet.species === 'cat' ? '"喵~"' : '"汪！"';
-      else if (pet.intimacy < 50) speechEl.textContent = '"饿饿...想玩..."';
-      else if (pet.intimacy < 80) speechEl.textContent = '"今天你回来晚了呢，我等了好久。"';
-      else speechEl.textContent = '"你最近是不是不太开心？我感觉你叹气变多了。"';
-    }
-    const stats = [
-      { icon: '🍚', label: '饥饿', val: pet.hunger || 0, color: '#FF9E5E' },
-      { icon: '🛁', label: '清洁', val: pet.cleanliness || 0, color: '#7EC8E3' },
-      { icon: '😊', label: '心情', val: pet.mood || 0, color: '#FF5E78' },
-      { icon: '💤', label: '精力', val: pet.energy || 0, color: '#C4B5FD' },
-      { icon: '❤️', label: '亲密度', val: pet.intimacy || 0, color: '#FF5E78' },
-      { icon: '🧠', label: '说话力', val: pet.speak_level || 0, color: '#7DD3C0' },
-    ];
-    document.getElementById('pet-stats-grid').innerHTML = stats.map(s => `
-      <div class="pet-stat-row">
-        <div class="pet-stat-icon">${s.icon}</div>
-        <div class="pet-stat-info">
-          <div class="pet-stat-header"><span class="pet-stat-label">${s.label}</span><span class="pet-stat-value">${Math.floor(s.val)}</span></div>
-          <div class="pet-stat-bar"><div class="pet-stat-fill" style="width:${Math.min(s.val,100)}%;background:${s.color}"></div></div>
-        </div>
-      </div>
-    `).join('');
-  } catch (e) {
-    showToast('加载宠物失败');
+  const pet = Store.getPet(currentPetId);
+  if (!pet) { showToast('宠物不存在'); return; }
+  document.getElementById('pet-name').textContent = pet.name;
+  document.getElementById('pet-hero-avatar').innerHTML =
+    `<img src="${PET_EMOJI[pet.species] || 'src/assets/icons/陪伴.png'}" alt="" class="pet-hero-avatar-img">`;
+  const speechEl = document.getElementById('pet-speech');
+  if (speechEl) {
+    if (pet.intimacy < 20) speechEl.textContent = pet.species === 'cat' ? '"喵~"' : '"汪！"';
+    else if (pet.intimacy < 50) speechEl.textContent = '"饿饿...想玩..."';
+    else if (pet.intimacy < 80) speechEl.textContent = '"今天你回来晚了呢，我等了好久。"';
+    else speechEl.textContent = '"你最近是不是不太开心？我感觉你叹气变多了。"';
   }
+  const stats = [
+    { icon: '🍚', label: '饥饿', val: pet.hunger || 0, color: '#FF9E5E' },
+    { icon: '🛁', label: '清洁', val: pet.cleanliness || 0, color: '#7EC8E3' },
+    { icon: '😊', label: '心情', val: pet.mood || 0, color: '#FF5E78' },
+    { icon: '💤', label: '精力', val: pet.energy || 0, color: '#C4B5FD' },
+    { icon: '❤️', label: '亲密度', val: pet.intimacy || 0, color: '#FF5E78' },
+    { icon: '🧠', label: '说话力', val: pet.speak_level || 0, color: '#7DD3C0' },
+  ];
+  document.getElementById('pet-stats-grid').innerHTML = stats.map(s => `
+    <div class="pet-stat-row">
+      <div class="pet-stat-icon">${s.icon}</div>
+      <div class="pet-stat-info">
+        <div class="pet-stat-header"><span class="pet-stat-label">${s.label}</span><span class="pet-stat-value">${Math.floor(s.val)}</span></div>
+        <div class="pet-stat-bar"><div class="pet-stat-fill" style="width:${Math.min(s.val,100)}%;background:${s.color}"></div></div>
+      </div>
+    </div>
+  `).join('');
 };
 
-async function openPet(petId) {
+function openPet(petId) {
   currentPetId = petId;
   router.go('pet');
 }
 
-async function petDoAction(action) {
+function petDoAction(action) {
   if (!currentPetId) return;
   try {
-    const data = await api.pets.action(currentPetId, action);
-    showToast(data.message);
-    if (data.level_up) setTimeout(() => showToast(`🎉 升级到 Lv.${data.new_level}！`), 1000);
+    const res = Store.petAction(currentPetId, action);
+    showToast(res.message);
+    if (res.level_up) setTimeout(() => showToast(`🎉 升级到 Lv.${res.new_level}！`), 1000);
     window.onPage_pet();
   } catch (e) {
-    showToast('操作失败: ' + e.message);
+    showToast('操作失败：' + e.message);
   }
 }
 
@@ -642,6 +616,20 @@ async function petDoAction(action) {
 window.onPage_profile = function() {
   const nameEl = document.getElementById('profile-name');
   if (nameEl) nameEl.textContent = userGender === 'male' ? '男生用户' : userGender === 'female' ? '女生用户' : '用户';
+
+  // 陪伴天数：从首次使用算起
+  const firstUseKey = 'linger_first_use';
+  let firstUse = parseInt(localStorage.getItem(firstUseKey) || '0');
+  if (!firstUse) { firstUse = Date.now(); localStorage.setItem(firstUseKey, firstUse.toString()); }
+  const days = Math.max(1, Math.floor((Date.now() - firstUse) / 86400000) + 1);
+  const chars = Store.listCharacters();
+  const totalChats = chars.reduce((s, c) => s + Store.getChatHistory(c.id).length, 0);
+
+  const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  setText('stat-days', days);
+  setText('stat-chats', totalChats);
+  setText('stat-gifts', 0);
+  setText('stat-memories', chars.reduce((s, c) => s + Math.floor((c.intimacy || 0) * 30), 0));
 };
 
 function resetGender() {
@@ -650,17 +638,128 @@ function resetGender() {
 }
 
 // ═══════════════════════════════════════════
+// 页面钩子：设置（BYOK 配置）
+// ═══════════════════════════════════════════
+window.onPage_settings = function() {
+  renderSettingsForm();
+};
+
+function renderSettingsForm() {
+  const container = document.getElementById('settings-form');
+  if (!container) return;
+  const cfg = LLM.getConfig() || {};
+  const currentProvider = cfg.provider || 'openrouter';
+
+  const presetOptions = Object.entries(LLM.PRESETS).map(([k, v]) =>
+    `<option value="${k}" ${k === currentProvider ? 'selected' : ''}>${v.label}</option>`
+  ).join('');
+
+  container.innerHTML = `
+    <div class="settings-section">
+      <div class="settings-label">服务商</div>
+      <select id="settings-provider" class="settings-input" onchange="onProviderChange(this.value)">
+        ${presetOptions}
+      </select>
+      <div class="settings-hint" id="settings-provider-hint"></div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-label">Base URL</div>
+      <input type="text" id="settings-baseurl" class="settings-input" placeholder="https://..." value="${escapeHtml(cfg.baseURL || '')}">
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-label">API Key</div>
+      <input type="password" id="settings-apikey" class="settings-input" placeholder="sk-..." value="${escapeHtml(cfg.apiKey || '')}">
+      <div class="settings-hint">仅保存在你本机浏览器，不会上传到任何服务器</div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-label">模型</div>
+      <input type="text" id="settings-model" class="settings-input" placeholder="deepseek-chat" value="${escapeHtml(cfg.model || '')}">
+    </div>
+
+    <div class="settings-actions">
+      <button class="settings-btn secondary" onclick="testSettings()">测试连接</button>
+      <button class="settings-btn primary" onclick="saveSettings()">保存</button>
+    </div>
+
+    <div class="settings-section" style="margin-top:24px">
+      <button class="settings-btn danger" onclick="clearSettings()">清除 API Key</button>
+    </div>
+
+    <div class="settings-result" id="settings-result"></div>
+  `;
+
+  onProviderChange(currentProvider, /*applyDefaults*/ !cfg.apiKey);
+}
+
+function onProviderChange(provider, applyDefaults = true) {
+  const preset = LLM.PRESETS[provider];
+  if (!preset) return;
+  const hintEl = document.getElementById('settings-provider-hint');
+  if (hintEl) {
+    const signup = preset.signupURL
+      ? ` · <a href="${preset.signupURL}" target="_blank" rel="noopener">获取 Key</a>`
+      : '';
+    hintEl.innerHTML = `${escapeHtml(preset.note || '')}${signup}`;
+  }
+  if (applyDefaults) {
+    const baseEl = document.getElementById('settings-baseurl');
+    const modelEl = document.getElementById('settings-model');
+    if (baseEl && !baseEl.value) baseEl.value = preset.baseURL;
+    if (modelEl && !modelEl.value) modelEl.value = preset.defaultModel;
+  }
+}
+
+function collectSettings() {
+  const provider = document.getElementById('settings-provider').value;
+  const preset = LLM.PRESETS[provider];
+  return {
+    provider,
+    providerLabel: preset?.label,
+    baseURL: document.getElementById('settings-baseurl').value.trim(),
+    apiKey: document.getElementById('settings-apikey').value.trim(),
+    model: document.getElementById('settings-model').value.trim(),
+  };
+}
+
+async function testSettings() {
+  const cfg = collectSettings();
+  const resEl = document.getElementById('settings-result');
+  if (!cfg.apiKey || !cfg.baseURL || !cfg.model) {
+    resEl.className = 'settings-result error';
+    resEl.textContent = '请先填写 Base URL、API Key 和模型名';
+    return;
+  }
+  resEl.className = 'settings-result';
+  resEl.textContent = '测试中...';
+  const r = await LLM.testConnection(cfg);
+  resEl.className = 'settings-result ' + (r.ok ? 'ok' : 'error');
+  resEl.textContent = (r.ok ? '✓ ' : '✗ ') + r.message;
+}
+
+function saveSettings() {
+  const cfg = collectSettings();
+  if (!cfg.apiKey || !cfg.baseURL || !cfg.model) {
+    showToast('请先填写 Base URL、API Key 和模型名'); return;
+  }
+  LLM.setConfig(cfg);
+  showToast('✓ 已保存，现在可以正常聊天了');
+}
+
+function clearSettings() {
+  if (!confirm('确认清除 API Key？清除后将回退到演示模式（脚本化回复）')) return;
+  LLM.clearConfig();
+  renderSettingsForm();
+  showToast('已清除');
+}
+
+// ═══════════════════════════════════════════
 // 纪念模式
 // ═══════════════════════════════════════════
-// ═══════════════════════════════════════════
-// 页面钩子：纪念聊天
-// ═══════════════════════════════════════════
 window.onPage_memorial_chat = function() {
-  const list = document.getElementById('memorial-chat-msg-list');
-  if (list) {
-    const emptyCheck = list.querySelector('.chat-empty');
-    // Keep existing messages if any
-  }
+  // 保留既有消息；无动作
 };
 
 function sendMemorialChat() {
@@ -673,16 +772,12 @@ function sendMemorialChat() {
   const list = document.getElementById('memorial-chat-msg-list');
   if (!list) return;
 
-  // Append user message
   const userDiv = document.createElement('div');
   userDiv.className = 'chat-msg user';
-  userDiv.innerHTML = `<div class="chat-bubble">${escapeHtml(msg)}</div><span class="chat-time">${formatTime(new Date().toISOString())}</span>`;
+  userDiv.innerHTML = `<div class="chat-bubble">${escapeHtml(msg)}</div><span class="chat-time">${formatTime(Date.now())}</span>`;
   list.appendChild(userDiv);
-
-  // Scroll to bottom
   setTimeout(() => { list.scrollTop = list.scrollHeight; }, 100);
 
-  // Simulate AI reply (memorial mode uses local responses)
   const replies = [
     '我在呢，宝贝。',
     '我一直都在你身边。',
@@ -700,7 +795,7 @@ function sendMemorialChat() {
   setTimeout(() => {
     const aiDiv = document.createElement('div');
     aiDiv.className = 'chat-msg ai';
-    aiDiv.innerHTML = `<div class="chat-bubble memorial-bubble">${reply}</div><span class="chat-time">${formatTime(new Date().toISOString())}</span>`;
+    aiDiv.innerHTML = `<div class="chat-bubble memorial-bubble">${escapeHtml(reply)}</div><span class="chat-time">${formatTime(Date.now())}</span>`;
     list.appendChild(aiDiv);
     setTimeout(() => { list.scrollTop = list.scrollHeight; }, 100);
   }, 800);
@@ -716,9 +811,7 @@ function nextMemorialStep(step) {
   if (step === 4) animateMemorialProgress();
 }
 
-function prevMemorialStep(step) {
-  nextMemorialStep(step);
-}
+function prevMemorialStep(step) { nextMemorialStep(step); }
 
 function animateMemorialProgress() {
   const circle = document.getElementById('memorial-progress-circle');
@@ -752,9 +845,6 @@ function generateMemorialPersona() {
   }, 3000);
 }
 
-// ═══════════════════════════════════════════
-// 语音录制占位
-// ═══════════════════════════════════════════
 function toggleRecording() {
   showToast('语音功能开发中');
 }

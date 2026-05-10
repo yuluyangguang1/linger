@@ -25,14 +25,21 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
-      - name: Copy all files to _site
+      - name: Assemble static site
         run: |
+          set -eux
           mkdir -p ./_site
-          # 复制仓库根目录所有前端文件到 _site
-          cp -r ./* ./_site/ 2>/dev/null || true
-          # 排除某些不需要的文件
-          shopt -s extglob
-          rm -rf ./_site/.git ./_site/.github ./_site/backend 2>/dev/null || true
+          # 复制纯静态资源
+          cp index.html ./_site/
+          cp -r src ./_site/
+          # .nojekyll：防止 GitHub Pages 把 src/ 下的东西当成 Jekyll 源处理
+          touch ./_site/.nojekyll
+          # 不复制的内容（后端、源文档、脚本、git 等）：
+          #   backend/  — FastAPI 源码，不参与静态部署
+          #   docs/     — 设计文档，源码阅读用
+          #   scripts/  — 开发脚本
+          #   .git .github .gitignore README.md  — 仓库元信息
+          ls -la ./_site
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

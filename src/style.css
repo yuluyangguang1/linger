@@ -829,3 +829,112 @@ html, body {
   margin-bottom: 10px;
   display: block;
 }
+
+
+
+/* ═══════════════════════════════════════════ */
+/* 设置页 (BYOK)                                */
+/* ═══════════════════════════════════════════ */
+#page-settings {
+  background: #f6f4ef;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 40px;
+}
+.settings-intro {
+  padding: 16px 20px 4px;
+}
+.settings-intro-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #3a2f28;
+  margin-bottom: 6px;
+}
+.settings-intro-desc {
+  font-size: 13px;
+  color: #8a7d75;
+  line-height: 1.6;
+}
+#settings-form {
+  padding: 12px 20px;
+}
+.settings-section {
+  margin-bottom: 18px;
+}
+.settings-label {
+  font-size: 13px;
+  color: #6b5e56;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+.settings-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #e4ddd3;
+  background: #fff;
+  font-size: 14px;
+  color: #3a2f28;
+  outline: none;
+  transition: border-color .15s;
+}
+.settings-input:focus {
+  border-color: #FF9E5E;
+}
+.settings-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #a89b92;
+}
+.settings-hint a { color: #FF7A45; text-decoration: underline; }
+.settings-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+.settings-btn {
+  flex: 1;
+  padding: 12px;
+  border-radius: 14px;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform .1s, opacity .1s;
+}
+.settings-btn:active { transform: scale(0.97); }
+.settings-btn.primary {
+  background: linear-gradient(135deg, #FF9E5E, #FF5E78);
+  color: #fff;
+}
+.settings-btn.secondary {
+  background: #fff;
+  color: #6b5e56;
+  border: 1px solid #e4ddd3;
+}
+.settings-btn.danger {
+  width: 100%;
+  background: #fff;
+  color: #d45a5a;
+  border: 1px solid #eccfcf;
+}
+.settings-result {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  min-height: 1em;
+  color: #6b5e56;
+  word-break: break-word;
+}
+.settings-result.ok {
+  background: #ecf7ec;
+  color: #2f7a3a;
+}
+.settings-result.error {
+  background: #faeaea;
+  color: #b44040;
+}
+.tier-pill.warning { background: #fff5e0; color: #a87020; }
