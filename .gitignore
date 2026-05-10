@@ -51,3 +51,12 @@ build/
 # Temporary
 tmp/
 temp/
+
+
+# Backend runtime artifacts (backend code kept for reference but never deployed)
+backend/.env
+backend/*.db
+backend/linger.db
+
+# GitHub Pages build output
+_site/
