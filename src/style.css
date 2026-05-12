@@ -960,3 +960,145 @@ html, body {
   color: #b44040;
 }
 .tier-pill.warning { background: #fff5e0; color: #a87020; }
+
+/* ═══════════════════════════════════════════
+   数据管理
+   ═══════════════════════════════════════════ */
+.data-mgmt-page {
+  padding: 20px 16px;
+  padding-bottom: calc(80px + env(safe-area-inset-bottom));
+}
+.data-mgmt-info-card {
+  background: #fff5f5;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.data-mgmt-info-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #c0392b;
+  margin-bottom: 8px;
+}
+.data-mgmt-info-text {
+  font-size: 13px;
+  color: #6b5e56;
+  line-height: 1.6;
+}
+.data-mgmt-stats-bar {
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+.data-mgmt-stat-line {
+  font-size: 14px;
+  font-weight: 500;
+  color: #3c3c43;
+  text-align: center;
+}
+.data-mgmt-key-detail {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #8e8e93;
+}
+.data-mgmt-key-detail span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.data-mgmt-key-detail {
+  display: flex;
+  flex-direction: column;
+}
+.data-mgmt-key-detail > div {
+  display: flex;
+  justify-content: space-between;
+}
+.data-mgmt-actions {
+  display: grid;
+  gap: 12px;
+}
+.data-mgmt-btn {
+  padding: 14px 20px;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.data-mgmt-btn:active {
+  opacity: 0.7;
+}
+.action-export {
+  background: var(--primary, #6366f1);
+  color: #fff;
+}
+.action-import {
+  background: #f0f0f5;
+  color: var(--text-primary, #3c3c43);
+}
+.action-reset {
+  background: #fff;
+  border: 1px solid #e5e5ea;
+  color: #c0392b;
+  margin-top: 8px;
+}
+.data-mgmt-result {
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  text-align: center;
+  min-height: 1em;
+}
+.data-mgmt-result.success {
+  background: #ecf7ec;
+  color: #2f7a3a;
+}
+.data-mgmt-result.error {
+  background: #faeaea;
+  color: #b44040;
+}
+
+/* Mobile 适配 */
+@media (prefers-color-scheme: dark) {
+  .data-mgmt-info-card {
+    background: #2a1a1a;
+    border: 1px solid #3a2a2a;
+  }
+  .data-mgmt-info-title {
+    color: #ff6b6b;
+  }
+  .data-mgmt-info-text {
+    color: #a0a0b0;
+  }
+  .data-mgmt-stats-bar {
+    background: rgba(255, 255, 255, 0.06);
+  }
+  .data-mgmt-stat-line {
+    color: #e0e0e0;
+  }
+  .data-mgmt-key-detail {
+    color: #666;
+  }
+  .action-import {
+    background: #2a2a3a;
+    color: #e0e0e0;
+  }
+  .action-reset {
+    background: #1a1a2e;
+    border-color: #3a3a4a;
+  }
+  .data-mgmt-result.success {
+    background: #1a2a1a;
+    color: #4ade80;
+  }
+  .data-mgmt-result.error {
+    background: #2a1a1a;
+    color: #f87171;
+  }
+}

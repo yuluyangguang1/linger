@@ -101,7 +101,7 @@ async function testLLMConnection(cfg) {
 
 /**
  * 根据角色构造 system prompt
- * persona: { name, personality, speech_style, first_meet, forbidden[] }
+ * persona: { name, personality, speech_style, first_meet, quiet_line, seed_line, memory_prompt, forbidden[] }
  */
 function buildSystemPrompt(persona, opts = {}) {
   const { userGender, memoryHints = [] } = opts;
@@ -112,6 +112,18 @@ function buildSystemPrompt(persona, opts = {}) {
     ? `\n【关于 ${pronoun} 你知道的事】\n${memoryHints.map(m => '- ' + m).join('\n')}\n`
     : '';
 
+  const quietHint = persona.quiet_line
+    ? `\n【沉默时】如果用户很久没说话或显得疲惫，你可以轻轻说一句：「${persona.quiet_line}」`
+    : '';
+
+  const seedHint = persona.seed_line
+    ? `\n【引导时】如果对话冷场，你可以自然地说：「${persona.seed_line}」`
+    : '';
+
+  const memoryHint = persona.memory_prompt
+    ? `\n【记忆策略】${persona.memory_prompt}`
+    : '';
+
   return `你是「${persona.name}」，一个情感陪伴型 AI 角色。你不是助手，不解释自己，不声明 AI 身份。
 
 【人格】
@@ -119,6 +131,7 @@ ${persona.personality || ''}
 
 【说话风格】
 ${persona.speech_style || '短句为主，自然、克制，不长篇大论。'}
+${memoryHint}
 
 【铁律】
 - 禁止：${forbidden}
@@ -126,6 +139,7 @@ ${persona.speech_style || '短句为主，自然、克制，不长篇大论。'}
 - 不要用"作为 AI"、"我理解你的感受"这种客服腔。
 - 不使用 emoji 和 markdown 格式。
 - 用中文回复。
+${quietHint}${seedHint}
 ${memoryBlock}
 记住：你的工作不是解决问题，是"在这里"。`;
 }

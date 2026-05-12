@@ -367,6 +367,11 @@
       <span class="profile-menu-label">设置（API Key）</span>
       <span class="profile-menu-arrow">→</span>
     </div>
+    <div class="profile-menu-item" onclick="router.go('data-mgmt')">
+      <span class="profile-menu-icon">💾</span>
+      <span class="profile-menu-label">数据备份与恢复</span>
+      <span class="profile-menu-arrow">→</span>
+    </div>
     <div class="profile-menu-item" onclick="showToast('功能开发中')">
       <span class="profile-menu-icon">❓</span>
       <span class="profile-menu-label">帮助与反馈</span>
@@ -477,6 +482,35 @@
 </div>
 
 <!-- ═══════════════════════════════════════════ -->
+<!-- 08 数据管理页                               -->
+<!-- ═══════════════════════════════════════════ -->
+<div id="page-data-mgmt" class="page">
+  <div class="create-header">
+    <button class="create-back" onclick="router.go('profile')">←</button>
+    <div class="create-title">数据管理</div>
+    <div style="width:60px"></div>
+  </div>
+  <div class="data-mgmt-page">
+    <div class="data-mgmt-info-card">
+      <div class="data-mgmt-info-title">⚠️ 关于数据安全</div>
+      <div class="data-mgmt-info-text">
+        你的所有数据（角色关系、聊天记录、宠物、纪念数据）都保存在本机浏览器中。<br><br>
+        如果你清空浏览器缓存、删除网站数据、或换手机/浏览器，<b>所有回忆都会丢失。</b><br><br>
+        建议定期导出备份。
+      </div>
+    </div>
+    <div id="data-mgmt-stats" class="data-mgmt-stats-bar"></div>
+    <div class="data-mgmt-actions">
+      <button class="data-mgmt-btn action-export" onclick="doPageExport()">📤 导出备份</button>
+      <button class="data-mgmt-btn action-import" onclick="document.getElementById('page-data-import-input').click()">📥 导入备份</button>
+      <input type="file" id="page-data-import-input" accept=".json" style="display:none" onchange="doPageImport(this)">
+      <button class="data-mgmt-btn action-reset" onclick="doPageReset()">🗑️ 清空所有数据</button>
+    </div>
+    <div id="data-mgmt-result" class="data-mgmt-result"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
 <!-- 09 设置（BYOK API Key）                     -->
 <!-- ═══════════════════════════════════════════ -->
 <div id="page-settings" class="page">
@@ -497,7 +531,8 @@
 <script src="src/local-store.js?v=1"></script>
 <script src="src/llm-client.js?v=1"></script>
 <script src="src/onboarding.js?v=1"></script>
-<script src="src/app.js?v=14"></script>
+<script src="src/data-backup.js?v=1"></script>
+<script src="src/app.js?v=15"></script>
 <script>
   document.addEventListener('DOMContentLoaded', initApp);
 </script>

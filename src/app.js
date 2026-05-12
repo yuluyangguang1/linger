@@ -964,3 +964,103 @@ function generateMemorialPersona() {
 function toggleRecording() {
   showToast('语音功能开发中');
 }
+
+// ═══════════════════════════════════════════
+// 数据管理页面
+// ═══════════════════════════════════════════
+window.onPage_dataMgmt = function() {
+  const statsEl = document.getElementById('data-mgmt-stats');
+  const resultEl = document.getElementById('data-mgmt-result');
+  if (resultEl) resultEl.textContent = '';
+  if (!statsEl) return;
+
+  let dataSize = 0;
+  let keyCount = 0;
+  const keys = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key.startsWith('linger_') || key === 'rv_gender') {
+      const val = localStorage.getItem(key) || '';
+      dataSize += val.length;
+      keyCount++;
+      keys.push({ key, size: val.length });
+    }
+  }
+  const dataSizeKB = (dataSize / 1024).toFixed(1);
+
+  let html = `<div class="data-mgmt-stat-line">共 ${keyCount} 个数据项，约 ${dataSizeKB} KB</div>`;
+
+  // Show big key items
+  const bigKeys = keys.filter(k => k.size > 200).sort((a, b) => b.size - a.size);
+  if (bigKeys.length > 0) {
+    html += '<div class="data-mgmt-key-detail">';
+    bigKeys.slice(0, 8).forEach(k => {
+      html += `<span>${k.key}</span><span>${(k.size / 1024).toFixed(1)} KB</span>`;
+    });
+    html += '</div>';
+  }
+  statsEl.innerHTML = html;
+};
+
+window.doPageExport = function() {
+  const resultEl = document.getElementById('data-mgmt-result');
+  if (!resultEl) return;
+  try {
+    const filename = LingerDataBackup.exportData();
+    resultEl.className = 'data-mgmt-result success';
+    resultEl.textContent = `✅ 已导出：${filename}`;
+  } catch (e) {
+    resultEl.className = 'data-mgmt-result error';
+    resultEl.textContent = `❌ 导出失败：${e.message}`;
+  }
+};
+
+window.doPageImport = function(input) {
+  const resultEl = document.getElementById('data-mgmt-result');
+  if (!resultEl) return;
+  const file = input.files[0];
+  if (!file) return;
+  resultEl.className = 'data-mgmt-result';
+  resultEl.textContent = '🔄 正在恢复...';
+
+  const reader = new FileReader();
+  reader.onload = function() {
+    const result = LingerDataBackup.importData(reader.result);
+    if (result.errors.length > 0) {
+      resultEl.className = 'data-mgmt-result error';
+      resultEl.textContent = `❌ 恢复失败：${result.errors[0]}`;
+    } else {
+      resultEl.className = 'data-mgmt-result success';
+      resultEl.textContent = `✅ 已恢复 ${result.restored} 项数据，请刷新页面生效`;
+      // Update stats
+      onPage_dataMgmt();
+    }
+  };
+  reader.onerror = function() {
+    resultEl.className = 'data-mgmt-result error';
+    resultEl.textContent = '❌ 读取文件失败';
+  };
+  reader.readAsText(file);
+  // Reset input so same file can be selected again
+  input.value = '';
+};
+
+window.doPageReset = function() {
+  if (!confirm('⚠️ 确定要清空所有数据吗？\n\n包括：角色关系、聊天记录、宠物、纪念数据、API Key。\n此操作不可恢复！')) return;
+  if (!confirm('最后确认：真的要清空吗？')) return;
+
+  const resultEl = document.getElementById('data-mgmt-result');
+  let removed = 0;
+  for (let i = localStorage.length - 1; i >= 0; i--) {
+    const key = localStorage.key(i);
+    if (key.startsWith('linger_') || key === 'rv_gender') {
+      localStorage.removeItem(key);
+      removed++;
+    }
+  }
+  if (resultEl) {
+    resultEl.className = 'data-mgmt-result success';
+    resultEl.textContent = `✅ 已清空 ${removed} 个数据项`;
+  }
+  onPage_dataMgmt();
+};
