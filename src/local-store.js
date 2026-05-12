@@ -227,11 +227,38 @@ function listMemorials() {
   catch { return []; }
 }
 
-function saveMemorial(m) {
+function saveMemorial(name, stories) {
   const arr = listMemorials();
-  arr.push({ ...m, id: 'mem_' + Date.now(), createdAt: Date.now() });
+  const m = {
+    id: 'mem_' + Date.now(),
+    name: name,
+    stories: stories,
+    createdAt: Date.now(),
+  };
+  arr.push(m);
   localStorage.setItem('linger_memorials', JSON.stringify(arr));
-  return arr[arr.length - 1];
+  // 创建专属聊天历史 key
+  localStorage.setItem('linger_memorial_chat_' + m.id, JSON.stringify([]));
+  return m;
+}
+
+const MEMORIAL_CHAT_HISTORY_LIMIT = 40;
+
+function getMemorialPerson(id) {
+  return listMemorials().find(m => m.id === id);
+}
+
+function getMemorialChatHistory(id) {
+  try { return JSON.parse(localStorage.getItem('linger_memorial_chat_' + id) || '[]'); }
+  catch { return []; }
+}
+
+function appendMemorialMessage(charId, role, content) {
+  const hist = getMemorialChatHistory(charId);
+  hist.push({ role, content, ts: Date.now() });
+  const trimmed = hist.slice(-MEMORIAL_CHAT_HISTORY_LIMIT);
+  localStorage.setItem('linger_memorial_chat_' + charId, JSON.stringify(trimmed));
+  return trimmed;
 }
 
 // ─── 导出 ───
@@ -255,4 +282,7 @@ window.LingerStore = {
   petAction,
   listMemorials,
   saveMemorial,
+  getMemorialPerson,
+  getMemorialChatHistory,
+  appendMemorialMessage,
 };

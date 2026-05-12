@@ -51,25 +51,24 @@
 html, body {
   width: 100%;
   height: 100%;
+  height: 100dvh;
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", Roboto, sans-serif;
   font-size: 15px;
   line-height: 1.6;
   color: var(--text);
   background: var(--bg);
-  overflow-x: hidden;
-  overflow-y: auto; /* Allow page scroll if needed */
-  -webkit-overflow-scrolling: touch; /* Smooth scroll on iOS */
+  overflow: hidden;
 }
 
 #app {
   width: 100%;
   height: 100%;
+  height: 100dvh;
   max-width: var(--max-w);
   margin: 0 auto;
   position: relative;
-  overflow-x: hidden;
-  overflow-y: auto; /* Allow scrolling within app container */
-  -webkit-overflow-scrolling: touch;
+  overflow: hidden;
+  touch-action: none;
 }
 
 /* ═══════════════════════════════════════════ */
@@ -79,19 +78,20 @@ html, body {
   position:absolute; inset:0;
   display:none;
   flex-direction:column;
-  overflow-y: auto; /* Allow page scrolling */
+  overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   background:var(--bg);
+  padding-bottom:calc(var(--tabbar-h) + 24px);
 }
 .page.active { display:flex; }
 .hidden { display:none !important; }
 
 /* ═══════════════════════════════════════════ */
-/* TabBar — 液态玻璃悬浮胶囊                     */
-/* ═══════════════════════════════════════════ */
+/* TabBar — 固定悬浮，不随页面滚动 */
 .tabbar {
-  position:absolute; bottom:16px; left:16px; right:16px;
+  position:fixed; bottom:16px; left:50%; transform:translateX(-50%);
+  width:min(var(--max-w) - 32px, calc(100vw - 32px));
   height:var(--tabbar-h);
   display:flex; align-items:center; justify-content:space-around;
   background:rgba(255,255,255,0.72);
@@ -100,9 +100,14 @@ html, body {
   border-radius:var(--radius-pill);
   border:1px solid rgba(255,255,255,0.4);
   box-shadow:0 4px 24px rgba(0,0,0,0.08), inset 0 1px 1px rgba(255,255,255,0.5);
-  z-index:100;
+  z-index:1000;
   padding:0 8px;
 }
+/* 隐藏非活跃页面的 tabbar */
+.page:not(.active) .tabbar {
+  display: none;
+}
+
 .tabbar-item {
   flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
   gap:3px; padding:6px 0;
@@ -111,15 +116,16 @@ html, body {
 }
 .tabbar-item.active { color:var(--primary); }
 .tabbar-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  filter: grayscale(0.3);
-  transition: filter 0.25s;
+  display:flex; align-items:center; justify-content:center;
+  font-size:20px; line-height:1;
+  filter:grayscale(0.2);
+  transition:filter 0.25s, transform 0.2s;
 }
-.tabbar-item.active .tabbar-icon { filter: grayscale(0); }
+.tabbar-icon img { display:none; }           /* 隐藏旧 PNG 图标 */
+.tabbar-icon[data-lucide] svg {
+  width:20px; height:20px; stroke-width:1.8;  /* Lucide 图标 */
+}
+.tabbar-item.active .tabbar-icon { filter:none; }
 .tabbar-label { font-size:10px; font-weight:500; }
 
 /* ═══════════════════════════════════════════ */
@@ -702,6 +708,22 @@ html, body {
 }
 .memorial-upload-icon { font-size:40px; }
 .memorial-upload-text { font-size:14px; color:var(--memorial-dim); }
+
+/* 纪念页：称呼输入 */
+.memorial-name-wrap { margin:0 auto 20px; width:100%; max-width:280px; text-align:left; }
+.memorial-name-label {
+  display:block; font-size:13px; color:var(--memorial-dim); margin-bottom:8px;
+}
+.memorial-name-input {
+  width:100%; padding:12px 16px; border-radius:var(--radius-sm);
+  border:1px solid rgba(255,255,255,0.12);
+  background:rgba(255,255,255,0.06);
+  font-size:16px; font-weight:500; color:var(--memorial-text);
+  outline:none; font-family:inherit; text-align:center;
+}
+.memorial-name-input:focus { border-color:var(--primary); background:rgba(255,255,255,0.1); }
+.memorial-name-input::placeholder { color:var(--memorial-dim); }
+
 .memorial-textarea {
   width:100%; max-width:340px; min-height:160px;
   background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1);

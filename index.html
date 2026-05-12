@@ -114,13 +114,13 @@
 
   <nav class="tabbar">
     <button class="tabbar-item active" data-page="home" onclick="router.go('home')">
-      <span class="tabbar-icon"><img src="src/assets/icons/我的.png" alt="我的" class="tab-icon-img"></span><span class="tabbar-label">在一起</span>
+      <span class="tabbar-icon">💞</span><span class="tabbar-label">在一起</span>
     </button>
     <button class="tabbar-item" data-page="them" onclick="router.go('them')">
-      <span class="tabbar-icon"><img src="src/assets/icons/他们.png" alt="他们" class="tab-icon-img"></span><span class="tabbar-label">他们</span>
+      <span class="tabbar-icon">👥</span><span class="tabbar-label">他们</span>
     </button>
     <button class="tabbar-item" data-page="profile" onclick="router.go('profile')">
-      <span class="tabbar-icon"><img src="src/assets/icons/在一起.png" alt="在一起" class="tab-icon-img"></span><span class="tabbar-label">我</span>
+      <span class="tabbar-icon">🤍</span><span class="tabbar-label">我</span>
     </button>
   </nav>
 </div>
@@ -196,13 +196,13 @@
 
   <nav class="tabbar">
     <button class="tabbar-item" data-page="home" onclick="router.go('home')">
-      <span class="tabbar-icon"><img src="src/assets/icons/我的.png" alt="我的" class="tab-icon-img"></span><span class="tabbar-label">在一起</span>
+      <span class="tabbar-icon">💞</span><span class="tabbar-label">在一起</span>
     </button>
     <button class="tabbar-item active" data-page="them" onclick="router.go('them')">
-      <span class="tabbar-icon"><img src="src/assets/icons/他们.png" alt="他们" class="tab-icon-img"></span><span class="tabbar-label">他们</span>
+      <span class="tabbar-icon">👥</span><span class="tabbar-label">他们</span>
     </button>
     <button class="tabbar-item" data-page="profile" onclick="router.go('profile')">
-      <span class="tabbar-icon"><img src="src/assets/icons/在一起.png" alt="在一起" class="tab-icon-img"></span><span class="tabbar-label">我</span>
+      <span class="tabbar-icon">🤍</span><span class="tabbar-label">我</span>
     </button>
   </nav>
 </div>
@@ -288,13 +288,13 @@
 
   <nav class="tabbar">
     <button class="tabbar-item" data-page="home" onclick="router.go('home')">
-      <span class="tabbar-icon"><img src="src/assets/icons/我的.png" alt="我的" class="tab-icon-img"></span><span class="tabbar-label">在一起</span>
+      <span class="tabbar-icon">💞</span><span class="tabbar-label">在一起</span>
     </button>
     <button class="tabbar-item" data-page="them" onclick="router.go('them')">
-      <span class="tabbar-icon"><img src="src/assets/icons/他们.png" alt="他们" class="tab-icon-img"></span><span class="tabbar-label">他们</span>
+      <span class="tabbar-icon">👥</span><span class="tabbar-label">他们</span>
     </button>
     <button class="tabbar-item" data-page="profile" onclick="router.go('profile')">
-      <span class="tabbar-icon"><img src="src/assets/icons/在一起.png" alt="在一起" class="tab-icon-img"></span><span class="tabbar-label">我</span>
+      <span class="tabbar-icon">🤍</span><span class="tabbar-label">我</span>
     </button>
   </nav>
 </div>
@@ -376,13 +376,13 @@
 
   <nav class="tabbar">
     <button class="tabbar-item" data-page="home" onclick="router.go('home')">
-      <span class="tabbar-icon"><img src="src/assets/icons/我的.png" alt="我的" class="tab-icon-img"></span><span class="tabbar-label">在一起</span>
+      <span class="tabbar-icon">💞</span><span class="tabbar-label">在一起</span>
     </button>
     <button class="tabbar-item" data-page="them" onclick="router.go('them')">
-      <span class="tabbar-icon"><img src="src/assets/icons/他们.png" alt="他们" class="tab-icon-img"></span><span class="tabbar-label">他们</span>
+      <span class="tabbar-icon">👥</span><span class="tabbar-label">他们</span>
     </button>
     <button class="tabbar-item active" data-page="profile" onclick="router.go('profile')">
-      <span class="tabbar-icon"><img src="src/assets/icons/在一起.png" alt="在一起" class="tab-icon-img"></span><span class="tabbar-label">我</span>
+      <span class="tabbar-icon">🤍</span><span class="tabbar-label">我</span>
     </button>
   </nav>
 </div>
@@ -418,12 +418,16 @@
     <button class="memorial-btn" onclick="nextMemorialStep(3)">下一步</button>
   </div>
 
-  <!-- 步骤 3：记忆故事 -->
+  <!-- 步骤 3：填写称呼 + 记忆故事 -->
   <div class="memorial-step hidden" id="memorial-step-3">
     <div class="memorial-back" onclick="prevMemorialStep(2)">← 返回</div>
-    <div class="memorial-step-title">记忆故事</div>
-    <div class="memorial-step-desc">写下关于 TA 的故事和回忆</div>
-    <textarea class="memorial-textarea" id="memorial-stories" placeholder="比如：&#10;TA 最喜欢吃什么？&#10;你们一起经历过什么难忘的事？&#10;TA 对你说过最重要的一句话？"></textarea>
+    <div class="memorial-step-title">写下关于 TA 的故事</div>
+    <div class="memorial-step-desc">告诉光，TA 是谁</div>
+    <div class="memorial-name-wrap">
+      <label class="memorial-name-label" for="memorial-name-input">你想叫 TA 什么？</label>
+      <input class="memorial-name-input" id="memorial-name-input" placeholder="比如：爸爸、妈妈、奶奶、爷爷…" maxlength="20">
+    </div>
+    <textarea class="memorial-textarea" id="memorial-stories" placeholder="写下关于 TA 的故事：&#10;TA 最喜欢吃什么？&#10;你们一起经历过什么难忘的事？&#10;TA 对你说过最重要的一句话？"></textarea>
     <button class="memorial-btn" onclick="generateMemorialPersona()">生成记忆人格</button>
   </div>
 
@@ -497,5 +501,7 @@
 <script>
   document.addEventListener('DOMContentLoaded', initApp);
 </script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>lucide.createIcons();</script>
 </body>
 </html>

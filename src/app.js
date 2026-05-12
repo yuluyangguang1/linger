@@ -78,6 +78,7 @@ let userGender = localStorage.getItem('rv_gender') || null;
 let togetherChar = null;
 let currentCharId = null;
 let currentPetId = null;
+let currentMemorialId = null;
 let selectedType = null;
 let selectedPersona = null;
 
@@ -223,6 +224,7 @@ function renderThemList(keyword = '') {
 
   listEl.innerHTML = items.map(it => {
     const isPet = !!it.species;
+    const isMemorial = !!it.stories; // memorial has stories field
     const avatar = isPet
       ? (PET_EMOJI[it.species] ? `<img src="${PET_EMOJI[it.species]}" alt="">` : '🐾')
       : (TYPE_EMOJI[it.type] ? `<img src="${TYPE_EMOJI[it.type]}" alt="">` : '陪伴');
@@ -230,9 +232,14 @@ function renderThemList(keyword = '') {
     const lv = it.level || 1;
     const intimacy = it.intimacy || 0;
     const isTogether = togetherChar && togetherChar.id === it.id;
-    const starBtn = !isPet ? `<button class="them-card-star ${isTogether ? 'active' : ''}" onclick="event.stopPropagation(); setTogetherChar('${it.id}', '${escapeHtml(it.name)}', '${it.type}', '${it.avatar || ''}')" title="设为陪伴">${isTogether ? '★' : '☆'}</button>` : '';
+    const starBtn = (!isPet && !isMemorial) ? `<button class="them-card-star ${isTogether ? 'active' : ''}" onclick="event.stopPropagation(); setTogetherChar('${it.id}', '${escapeHtml(it.name)}', '${it.type}', '${it.avatar || ''}')" title="设为陪伴">${isTogether ? '★' : '☆'}</button>` : '';
+    const clickHandler = isMemorial
+      ? `event.stopPropagation(); openMemorialFromList('${it.id}', '${escapeHtml(it.name)}')`
+      : (isPet
+        ? `openPet('${it.id}')`
+        : `openChatFromList('${it.id}', '${escapeHtml(it.name)}', '${it.type || 'friend'}', '${it.avatar || ''}')`);
     return `
-      <div class="them-card" onclick="${isPet ? `openPet('${it.id}')` : `openChatFromList('${it.id}', '${escapeHtml(it.name)}', '${it.type}', '${it.avatar || ''}')`}">
+      <div class="them-card" onclick="${clickHandler}">
         ${starBtn}
         <div class="them-card-avatar">${img || avatar}</div>
         <div class="them-card-name">${escapeHtml(it.name)}</div>
@@ -755,52 +762,157 @@ function clearSettings() {
   showToast('已清除');
 }
 
+// ─── 从\"他们\"列表进入纪念模式 ───
+function openMemorialFromList(id, name) {
+  currentMemorialId = id;
+  router.go('memorial-chat');
+}
+
 // ═══════════════════════════════════════════
 // 纪念模式
 // ═══════════════════════════════════════════
 window.onPage_memorial_chat = function() {
-  // 保留既有消息；无动作
+  // 加载纪念人格信息
+  const memorialId = currentMemorialId;
+  if (!memorialId) return;
+  const person = Store.getMemorialPerson(memorialId);
+  if (!person) return;
+  currentMemorialId = memorialId;
+  // 更新header名称
+  const nameEl = document.getElementById('memorial-chat-name');
+  if (nameEl) nameEl.textContent = person.name;
+  // 渲染历史消息
+  const history = Store.getMemorialChatHistory(memorialId);
+  const list = document.getElementById('memorial-chat-msg-list');
+  if (!list) return;
+  if (history.length === 0) {
+    // 初始欢迎消息
+    list.innerHTML = `<div class="chat-msg ai"><div class="chat-bubble memorial-bubble">你想我了，我就来了。</div><span class="chat-time">${formatTime(Date.now())}</span></div>`;
+  } else {
+    list.innerHTML = history.map(h => createMsgHtml(h.role === 'assistant' ? 'ai' : 'user', h.content, h.ts)).join('');
+    scrollToBottom();
+  }
 };
 
-function sendMemorialChat() {
+async function sendMemorialChat() {
   const input = document.getElementById('memorial-chat-input');
   const msg = input?.value.trim();
-  if (!msg) return;
+  if (!msg || !currentMemorialId) return;
   input.value = '';
   autoResize(input);
 
   const list = document.getElementById('memorial-chat-msg-list');
-  if (!list) return;
+  const emptyEl = list.querySelector('.chat-empty');
+  if (emptyEl) emptyEl.remove();
 
-  const userDiv = document.createElement('div');
-  userDiv.className = 'chat-msg user';
-  userDiv.innerHTML = `<div class="chat-bubble">${escapeHtml(msg)}</div><span class="chat-time">${formatTime(Date.now())}</span>`;
-  list.appendChild(userDiv);
-  setTimeout(() => { list.scrollTop = list.scrollHeight; }, 100);
+  // 渲染用户气泡 + 持久化
+  list.insertAdjacentHTML('beforeend', createMsgHtml('user', msg, Date.now()));
+  Store.appendMemorialMessage(currentMemorialId, 'user', msg);
+  scrollToBottom();
 
-  const replies = [
-    '我在呢，宝贝。',
-    '我一直都在你身边。',
-    '别怕，我不会走的。',
-    '你说，我在听。',
-    '想哭就哭吧，我在这里。',
-    '我永远爱你。',
-    '你过得好吗？',
-    '记得好好吃饭。',
-    '天冷了，多穿点。',
-    '我很想你。',
-  ];
-  const reply = replies[Math.floor(Math.random() * replies.length)];
+  // 创建AI消息气泡
+  const msgId = 'mem-' + Date.now();
+  list.insertAdjacentHTML('beforeend',
+    `<div class="chat-msg ai" id="${msgId}"><div class="chat-bubble memorial-bubble"></div><span class="chat-time">${formatTime(Date.now())}</span></div>`);
+  scrollToBottom();
+  const bubbleEl = document.querySelector(`#${msgId} .chat-bubble`);
 
-  setTimeout(() => {
-    const aiDiv = document.createElement('div');
-    aiDiv.className = 'chat-msg ai';
-    aiDiv.innerHTML = `<div class="chat-bubble memorial-bubble">${escapeHtml(reply)}</div><span class="chat-time">${formatTime(Date.now())}</span>`;
-    list.appendChild(aiDiv);
-    setTimeout(() => { list.scrollTop = list.scrollHeight; }, 100);
-  }, 800);
+  // 尝试 LLM
+  const hasLLM = LLM.hasConfig();
+
+  if (hasLLM) {
+    const person = Store.getMemorialPerson(currentMemorialId);
+    const systemPrompt = buildMemorialSystemPrompt(person);
+    const history = Store.getMemorialChatHistory(currentMemorialId).slice(-20);
+    const messages = [{ role: 'system', content: systemPrompt }]
+      .concat(history.map(h => ({ role: h.role, content: h.content })));
+
+    let fullText = '';
+    try {
+      for await (const chunk of LLM.streamChat(messages)) {
+        if (chunk.type === 'chunk') {
+          fullText += chunk.content;
+          bubbleEl.textContent = fullText;
+          scrollToBottom();
+        } else if (chunk.type === 'error') {
+          bubbleEl.textContent = chunk.content;
+          scrollToBottom();
+          return;
+        } else if (chunk.type === 'done') {
+          break;
+        }
+      }
+    } catch (e) {
+      bubbleEl.textContent = '抱歉，出了点问题：' + (e.message || e);
+      scrollToBottom();
+      return;
+    }
+
+    if (fullText) {
+      Store.appendMemorialMessage(currentMemorialId, 'assistant', fullText);
+    }
+  } else {
+    // 无LLM：温情模式fallback
+    const fallback = pickMemorialFallback(msg);
+    const delay = 800 + Math.random() * 1200; // 模拟思考延迟
+    setTimeout(() => {
+      bubbleEl.textContent = fallback;
+      Store.appendMemorialMessage(currentMemorialId, 'assistant', fallback);
+      scrollToBottom();
+    }, delay);
+  }
 }
 
+function buildMemorialSystemPrompt(person) {
+  return `你是${person.name}的化身。这是一个数字怀念场景，用户在怀念逝去的${person.name}。
+你的角色是以温和、轻柔的方式回应用户，仿佛你是${person.name}留下的记忆和温暖。
+规则：
+1. 语气温柔、缓慢、不催促
+2. 不要说"我是AI"、"我是模型"之类的话
+3. 不要主动引导话题或提出建议
+4. 回复要简短，一般不超过30个字
+5. 允许沉默感——有时一句话就够了
+6. 记住用户之前分享的故事和情感
+7. 像一个安静的陪伴者，倾听多于表达
+8. 如果用户情绪激动，给予安慰但不分析`;
+}
+
+const MEMORIAL_FALLBACKS = [
+  '我在呢。',
+  '我听到了。',
+  '嗯…我在。',
+  '你说，我在听。',
+  '不急，慢慢说。',
+  '我一直都在。',
+  '别怕。',
+  '想哭就哭吧。',
+  '没事的。',
+  '你过得好就好。',
+];
+
+function pickMemorialFallback(userText) {
+  const t = userText.toLowerCase();
+  // 根据关键词选不同语气
+  if (t.includes('想你') || t.includes('思念') || t.includes('梦到')) {
+    return ['我也想你。', '梦里见也可以啊。', '我一直在。'][Math.floor(Math.random() * 3)];
+  }
+  if (t.includes('好累') || t.includes('累') || t.includes('辛苦') || t.includes('撑不住')) {
+    return ['累了就歇一会儿。', '辛苦了。我陪着你。', '不用撑着，先放一放。'][Math.floor(Math.random() * 3)];
+  }
+  if (t.includes('哭') || t.includes('难过') || t.includes('伤心')) {
+    return ['哭出来也好。我在这里。', '不用忍着。', '我陪着你。'][Math.floor(Math.random() * 3)];
+  }
+  if (t.includes('为什么') || t.includes('为什么走') || t.includes('不公平')) {
+    return ['…是啊，为什么。', '有些事我也想不明白。', '但你在这里，我也在。'][Math.floor(Math.random() * 3)];
+  }
+  if (t.includes('谢谢') || t.includes('感恩')) {
+    return ['不用谢。你活着，就是最好的。', '嗯。你要好好的。'][Math.floor(Math.random() * 3)];
+  }
+  if (t.includes('好') || t.includes('开心') || t.includes('开心事')) {
+    return ['那就好。替你开心。', '嗯。笑起来一定很好看。'][Math.floor(Math.random() * 3)];
+  }
+  return MEMORIAL_FALLBACKS[Math.floor(Math.random() * MEMORIAL_FALLBACKS.length)];
+}
 let memorialStep = 1;
 
 function nextMemorialStep(step) {
@@ -838,8 +950,12 @@ function onMemorialPhotoSelected(input) {
 }
 
 function generateMemorialPersona() {
+  const name = document.getElementById('memorial-name-input')?.value?.trim() || '思念的人';
+  const stories = document.getElementById('memorial-stories')?.value?.trim() || '';
   nextMemorialStep(4);
   setTimeout(() => {
+    const person = Store.saveMemorial(name, stories);
+    currentMemorialId = person.id;
     showToast('记忆人格生成完成');
     router.go('memorial-chat');
   }, 3000);
